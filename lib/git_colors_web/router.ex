@@ -17,7 +17,6 @@ defmodule GitColorsWeb.Router do
   scope "/", GitColorsWeb do
     pipe_through :browser
 
-    # get "/", PageController, :home
     live "/", ColorLive
   end
 
