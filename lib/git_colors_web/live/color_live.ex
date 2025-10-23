@@ -12,7 +12,7 @@ defmodule GitColorsWeb.ColorLive do
       <div class="w-80 bg-gray-800 shadow-lg border-r border-gray-700">
         <div class="p-6">
           <h2 class="text-xl font-bold text-gray-100 mb-6">Repository Analysis</h2>
-          
+
     <!-- Form Section -->
           <div class="mb-8">
             <.form for={@form} id="directory-form" phx-submit="link_directory" class="space-y-4">
@@ -87,7 +87,7 @@ defmodule GitColorsWeb.ColorLive do
                   Submit
                 <% end %>
               </button>
-              
+
     <!-- Disclaimer -->
               <div class="mt-3 p-3 bg-yellow-900 border border-yellow-700 rounded-md">
                 <p class="text-yellow-200 text-xs">
@@ -98,7 +98,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </.form>
           </div>
-          
+
     <!-- Repository Info -->
           <%= if @linked_directory do %>
             <div class="mb-6">
@@ -136,7 +136,7 @@ defmodule GitColorsWeb.ColorLive do
               <% end %>
             </div>
           <% end %>
-          
+
     <!-- Selected Color Info -->
           <%= if @selected_color do %>
             <div class="mb-6">
@@ -153,7 +153,7 @@ defmodule GitColorsWeb.ColorLive do
                     <p class="text-sm text-gray-400">Hex Color</p>
                   </div>
                 </div>
-                
+
     <!-- Color Analysis -->
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
@@ -168,7 +168,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-          
+
     <!-- Color Statistics -->
           <%= if @commit_colors != [] && length(@commit_colors) > 10 do %>
             <div class="mb-6">
@@ -203,7 +203,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-          
+
     <!-- Commit Timeline -->
           <%= if @commit_colors != [] do %>
             <div class="mb-6">
@@ -244,7 +244,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-          
+
     <!-- Error Messages -->
           <%= if @error_message do %>
             <div class="mt-4 p-4 bg-red-900 border border-red-700 rounded-md">
@@ -255,7 +255,7 @@ defmodule GitColorsWeb.ColorLive do
           <% end %>
         </div>
       </div>
-      
+
     <!-- Pixel Popover -->
       <%= if @show_pixel_popover && @commit_colors != [] do %>
         <div
@@ -310,7 +310,7 @@ defmodule GitColorsWeb.ColorLive do
           </div>
         </div>
       <% end %>
-      
+
     <!-- Main Content -->
       <div class="flex-1 p-8 bg-gray-900">
         <div class="max-w-6xl mx-auto">
@@ -396,7 +396,7 @@ defmodule GitColorsWeb.ColorLive do
           <% end %>
         </div>
       </div>
-      
+
     <!-- Floating Navigation Buttons -->
       <%= if @commit_colors != [] do %>
         <!-- Jump to Bottom Button -->
@@ -500,23 +500,26 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   defp get_limited_commits(repo_path, count) do
-    # Check cache for "all" commits first
     if count == "all" do
-      case get_cached_commits(repo_path) do
-        {:ok, cached_colors} ->
-          Logger.info("Git Colors: Using cached results for repo: #{repo_path}")
-          {:ok, cached_colors}
-
-        :cache_miss ->
-          # Fetch and cache the results
-          case fetch_and_cache_all_commits(repo_path) do
-            {:ok, colors} -> {:ok, colors}
-            {:error, error} -> {:error, error}
-          end
-      end
+      get_all_commits_with_cache(repo_path)
     else
       # For limited commits, don't use cache
       fetch_commits(repo_path, count)
+    end
+  end
+
+  defp get_all_commits_with_cache(repo_path) do
+    case get_cached_commits(repo_path) do
+      {:ok, cached_colors} ->
+        Logger.info("Git Colors: Using cached results for repo: #{repo_path}")
+        {:ok, cached_colors}
+
+      :cache_miss ->
+        # Fetch and cache the results
+        case fetch_and_cache_all_commits(repo_path) do
+          {:ok, colors} -> {:ok, colors}
+          {:error, error} -> {:error, error}
+        end
     end
   end
 
@@ -626,7 +629,7 @@ defmodule GitColorsWeb.ColorLive do
       commit_count <= 500 -> 25
       commit_count <= 1000 -> 40
       commit_count <= 5000 -> 50
-      commit_count <= 10000 -> 60
+      commit_count <= 10_000 -> 60
       true -> 80
     end
   end
