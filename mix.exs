@@ -79,7 +79,11 @@ defmodule GitColors.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      # AI/ML dependencies
+      {:bumblebee, "~> 0.5.0"},
+      {:nx, "~> 0.7.0"},
+      {:exla, "~> 0.7.0"}
     ]
   end
 

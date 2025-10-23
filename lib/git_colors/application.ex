@@ -11,6 +11,8 @@ defmodule GitColors.Application do
       GitColorsWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:git_colors, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: GitColors.PubSub},
+      # Start the CommitAnalyzer GenServer
+      GitColors.CommitAnalyzer,
       # Start a worker by calling: GitColors.Worker.start_link(arg)
       # {GitColors.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -144,6 +144,7 @@ defmodule GitColorsWeb.ColorLive do
                     <div class="bg-purple-900 border border-purple-700 rounded-md p-3">
                       <p class="text-purple-200 text-sm">
                         <span class="font-medium">Unique Colors:</span> {@commit_colors
+                        |> extract_colors()
                         |> Enum.uniq()
                         |> length()}
                       </p>
@@ -197,7 +198,7 @@ defmodule GitColorsWeb.ColorLive do
                 <h3 class="text-lg font-semibold text-gray-100 mb-3">Color Statistics</h3>
                 <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
                   <div class="space-y-2 text-sm">
-                    <%= if Float.round(length(Enum.uniq(@commit_colors)) / length(@commit_colors) * 100, 3) != 100.0 do %>
+                    <%= if Float.round(length(Enum.uniq(extract_colors(@commit_colors))) / length(@commit_colors) * 100, 3) != 100.0 do %>
                       <div class="flex justify-between">
                         <span class="text-gray-400">Most Common:</span>
                         <div class="flex items-center space-x-2">
@@ -216,11 +217,130 @@ defmodule GitColorsWeb.ColorLive do
                       <span class="text-gray-400">Diversity:</span>
                       <span class="text-gray-200">
                         {Float.round(
-                          length(Enum.uniq(@commit_colors)) / length(@commit_colors) * 100,
+                          length(Enum.uniq(extract_colors(@commit_colors))) / length(@commit_colors) *
+                            100,
                           3
                         )}%
                       </span>
                     </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+    <!-- Commit Analysis -->
+            <%= if @commit_colors != [] && length(@commit_colors) > 5 do %>
+              <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-100 mb-3">Commit Analysis</h3>
+                <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
+                  <% analysis_stats = get_commit_analysis_stats(@commit_colors)
+                  [top_type | _] = analysis_stats.type_distribution
+                  [top_sentiment | _] = analysis_stats.sentiment_distribution
+                  [top_complexity | _] = analysis_stats.complexity_distribution %>
+                  <div class="space-y-3 text-sm">
+                    <div class="bg-blue-800 bg-opacity-50 rounded p-2">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-blue-200 font-medium text-xs">Most Common:</span>
+                        <span class="text-blue-100 font-mono text-xs px-1.5 py-0.5 bg-blue-900 rounded">
+                          {elem(top_type, 0)}
+                        </span>
+                      </div>
+                      <div class="text-xs text-blue-300">
+                        {elem(top_type, 1)} commits ({Float.round(
+                          elem(top_type, 1) / analysis_stats.total_commits * 100,
+                          1
+                        )}%)
+                      </div>
+                      <div class="text-xs text-blue-400 mt-1 italic">
+                        Types of changes: feat, fix, docs, refactor, etc.
+                      </div>
+                    </div>
+
+                    <div class="bg-green-800 bg-opacity-50 rounded p-2">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-200 font-medium text-xs">Sentiment:</span>
+                        <span class="text-green-100 font-mono text-xs px-1.5 py-0.5 bg-green-900 rounded">
+                          {elem(top_sentiment, 0)}
+                        </span>
+                      </div>
+                      <div class="text-xs text-green-300">
+                        {elem(top_sentiment, 1)} commits ({Float.round(
+                          elem(top_sentiment, 1) / analysis_stats.total_commits * 100,
+                          1
+                        )}%)
+                      </div>
+                      <div class="text-xs text-green-400 mt-1 italic">
+                        Emotional tone: positive, neutral, or negative
+                      </div>
+                    </div>
+
+                    <div class="bg-yellow-800 bg-opacity-50 rounded p-2">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-yellow-200 font-medium text-xs">Word Count:</span>
+                        <span class="text-yellow-100 font-mono text-xs px-1.5 py-0.5 bg-yellow-900 rounded">
+                          {analysis_stats.word_count_stats.average} avg
+                        </span>
+                      </div>
+                      <div class="text-xs text-yellow-300">
+                        {analysis_stats.word_count_stats.total_words} total words • {analysis_stats.word_count_stats.min}-{analysis_stats.word_count_stats.max} range
+                      </div>
+                      <div class="text-xs text-yellow-400 mt-1 italic">
+                        Message verbosity and communication patterns
+                      </div>
+                    </div>
+
+                    <div class="bg-indigo-800 bg-opacity-50 rounded p-2">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-indigo-200 font-medium text-xs">Complexity:</span>
+                        <span class="text-indigo-100 font-mono text-xs px-1.5 py-0.5 bg-indigo-900 rounded">
+                          {elem(top_complexity, 0)}
+                        </span>
+                      </div>
+                      <div class="text-xs text-indigo-300">
+                        {elem(top_complexity, 1)} commits ({Float.round(
+                          elem(top_complexity, 1) / analysis_stats.total_commits * 100,
+                          1
+                        )}%)
+                      </div>
+                      <div class="text-xs text-indigo-400 mt-1 italic">
+                        Technical scope: low, medium, or high complexity
+                      </div>
+                    </div>
+
+                    <div class="bg-purple-800 bg-opacity-50 rounded p-2">
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-purple-200 font-medium text-xs">AI Detection:</span>
+                        <span class="text-purple-100 font-mono text-xs px-1.5 py-0.5 bg-purple-900 rounded">
+                          {analysis_stats.ai_generation_stats.likely_ai_percentage}%
+                        </span>
+                      </div>
+                      <div class="text-xs text-purple-300">
+                        {analysis_stats.ai_generation_stats.likely_ai_count} of {analysis_stats.total_commits} likely AI-written
+                      </div>
+                      <div class="text-xs text-purple-400 mt-1 italic">
+                        Identifies potentially AI-generated commit messages
+                      </div>
+                    </div>
+
+                    <%= if analysis_stats.breaking_changes > 0 do %>
+                      <div class="bg-red-800 bg-opacity-50 rounded p-2">
+                        <div class="flex justify-between items-center mb-1">
+                          <span class="text-red-200 font-medium text-xs">Breaking Changes:</span>
+                          <span class="text-red-100 font-mono text-xs px-1.5 py-0.5 bg-red-900 rounded">
+                            {analysis_stats.breaking_changes}
+                          </span>
+                        </div>
+                        <div class="text-xs text-red-300">
+                          {Float.round(
+                            analysis_stats.breaking_changes / analysis_stats.total_commits * 100,
+                            1
+                          )}% of commits
+                        </div>
+                        <div class="text-xs text-red-400 mt-1 italic">
+                          Changes that break backward compatibility
+                        </div>
+                      </div>
+                    <% end %>
                   </div>
                 </div>
               </div>
@@ -252,10 +372,11 @@ defmodule GitColorsWeb.ColorLive do
                     Each pixel represents one commit (newest to oldest)
                   </p>
                   <div class="flex flex-wrap gap-0">
-                    <%= for {color, _index} <- Enum.with_index(@commit_colors) do %>
+                    <%= for {commit, _index} <- Enum.with_index(@commit_colors) do %>
                       <div
                         class="w-1 h-1"
-                        style={"background-color: ##{color}"}
+                        style={"background-color: ##{commit.color}"}
+                        title={"#{commit.message} (##{commit.color})"}
                       >
                       </div>
                     <% end %>
@@ -322,11 +443,11 @@ defmodule GitColorsWeb.ColorLive do
                       class="grid gap-0"
                       style={"grid-template-columns: repeat(#{max(20, div(calculate_grid_columns(length(@commit_colors)), 2))}, minmax(0, 1fr))"}
                     >
-                      <%= for {color, index} <- Enum.with_index(@commit_colors) do %>
+                      <%= for {commit, index} <- Enum.with_index(@commit_colors) do %>
                         <div
                           class="h-1 w-full"
-                          style={"background-color: ##{color}"}
-                          title={"##{color}"}
+                          style={"background-color: ##{commit.color}"}
+                          title={"#{commit.message} (##{commit.color})"}
                         >
                         </div>
                       <% end %>
@@ -345,7 +466,10 @@ defmodule GitColorsWeb.ColorLive do
         <div class="flex-1 p-4 lg:p-8 bg-gray-900">
           <div class="max-w-6xl mx-auto">
             <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-4 text-center">
-              Git Commits to <%= for {letter, color} <- @title_colors do %><span style={"color: ##{color}; transition: color 0.5s ease-in-out;"}><%= letter %></span><% end %>
+              Git Commits to
+              <%= for {letter, color} <- @title_colors do %>
+                <span style={"color: ##{color}; transition: color 0.5s ease-in-out;"}>{letter}</span>
+              <% end %>
             </h1>
             <p class="text-center text-gray-400 mb-6 lg:mb-8 text-sm lg:text-base">
               Each color box represents the first 6 characters of a commit hash from
@@ -371,7 +495,7 @@ defmodule GitColorsWeb.ColorLive do
                   </div>
                 </div>
                 <div class="grid grid-cols-8 sm:grid-cols-12 md:grid-cols-16 lg:grid-cols-20 gap-1 sm:gap-2">
-                  <%= for {color, index} <- Enum.with_index(@commit_colors, 1) do %>
+                  <%= for {commit, index} <- Enum.with_index(@commit_colors, 1) do %>
                     <%= if rem(index, 1000) == 0 do %>
                       <div class="col-span-full flex items-center justify-center py-2">
                         <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
@@ -382,12 +506,15 @@ defmodule GitColorsWeb.ColorLive do
                         </div>
                       </div>
                     <% end %>
-                    <.tooltip text={"##{color}"} position="tooltip-top">
+                    <.tooltip
+                      text={"#{commit.message} (##{commit.color}) - #{commit.analysis.type}"}
+                      position="tooltip-top"
+                    >
                       <div
                         class="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded border border-gray-600 flex items-center justify-center text-xs font-mono cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-                        style={"background-color: ##{color}"}
+                        style={"background-color: ##{commit.color}"}
                         phx-click="show_color"
-                        phx-value-color={color}
+                        phx-value-color={commit.color}
                       >
                       </div>
                     </.tooltip>
@@ -491,6 +618,9 @@ defmodule GitColorsWeb.ColorLive do
       Process.send_after(self(), :rotate_colors, 2000)
     end
 
+    # Check CommitAnalyzer status safely
+    analyzer_ready = GitColors.CommitAnalyzer.ready?()
+
     socket =
       socket
       |> assign(:form, form)
@@ -503,6 +633,7 @@ defmodule GitColorsWeb.ColorLive do
       |> assign(:show_pixel_popover, false)
       |> assign(:show_mobile_sidebar, false)
       |> assign(:title_colors, generate_colorful_letters("COLORS"))
+      |> assign(:analyzer_ready, analyzer_ready)
 
     {:ok, socket}
   end
@@ -549,11 +680,11 @@ defmodule GitColorsWeb.ColorLive do
   def handle_info({:load_commits, directory_path, commit_count}, socket) do
     # All commit counts (including 'all') use the same non-streaming approach
     case get_limited_commits(directory_path, commit_count) do
-      {:ok, colors} ->
+      {:ok, commits} ->
         socket =
           socket
           |> assign(:linked_directory, directory_path)
-          |> assign(:commit_colors, colors)
+          |> assign(:commit_colors, commits)
           |> assign(:commit_count, commit_count)
           |> assign(:loading, false)
 
@@ -576,10 +707,18 @@ defmodule GitColorsWeb.ColorLive do
     # Generate new colors for the title
     new_title_colors = generate_colorful_letters("COLORS")
 
+    # Also update analyzer status
+    analyzer_ready = GitColors.CommitAnalyzer.ready?()
+
     # Schedule next rotation
     Process.send_after(self(), :rotate_colors, 2000)
 
-    {:noreply, assign(socket, :title_colors, new_title_colors)}
+    socket =
+      socket
+      |> assign(:title_colors, new_title_colors)
+      |> assign(:analyzer_ready, analyzer_ready)
+
+    {:noreply, socket}
   end
 
   defp get_limited_commits(repo_path, count) do
@@ -607,22 +746,68 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   defp fetch_commits(repo_path, count) do
-    # Build git command arguments based on whether we want all commits or a specific count
+    # Build git command arguments to get both hash and commit message
     git_args =
       case count do
-        "all" -> ["-C", repo_path, "log", "--format=%H"]
-        _ -> ["-C", repo_path, "log", "--format=%H", "-#{count}"]
+        "all" -> ["-C", repo_path, "log", "--format=%H|%s"]
+        _ -> ["-C", repo_path, "log", "--format=%H|%s", "-#{count}"]
       end
 
     case git_cmd("git", git_args) do
       {output, 0} ->
-        colors =
+        commits =
           output
           |> String.split("\n", trim: true)
-          |> Enum.map(&String.slice(&1, 0, 6))
-          |> Enum.filter(&(String.length(&1) == 6))
+          |> Enum.map(fn line ->
+            case String.split(line, "|", parts: 2) do
+              [hash, message] ->
+                color = String.slice(hash, 0, 6)
 
-        {:ok, colors}
+                # Only include commits with valid 6-character color
+                if String.length(color) == 6 do
+                  # Always analyze commit message, with fallback to rule-based analysis
+                  analysis =
+                    case GitColors.CommitAnalyzer.analyze_commit(message) do
+                      {:ok, analysis_data} ->
+                        analysis_data
+
+                      {:error, "Models not loaded yet"} ->
+                        # Use rule-based analysis as fallback
+                        perform_basic_analysis(message)
+
+                      {:error, _} ->
+                        perform_basic_analysis(message)
+                    end
+
+                  %{
+                    hash: hash,
+                    color: color,
+                    message: message,
+                    analysis: analysis
+                  }
+                else
+                  nil
+                end
+
+              [hash] ->
+                # Handle case where there's no commit message
+                color = String.slice(hash, 0, 6)
+
+                if String.length(color) == 6 do
+                  %{
+                    hash: hash,
+                    color: color,
+                    message: "",
+                    analysis: perform_basic_analysis("")
+                  }
+                else
+                  nil
+                end
+            end
+          end)
+          |> Enum.filter(& &1)
+
+        {:ok, commits}
 
       {error, status} ->
         error_msg =
@@ -630,6 +815,167 @@ defmodule GitColorsWeb.ColorLive do
 
         Logger.error("Git Colors: #{error_msg}")
         {:error, error_msg}
+    end
+  end
+
+  defp perform_basic_analysis(message) do
+    %{
+      type: classify_commit_type_basic(message),
+      sentiment: analyze_sentiment_basic(message),
+      complexity: estimate_complexity_basic(message),
+      word_count: word_count_basic(message),
+      has_breaking_change: has_breaking_change_basic?(message),
+      is_ai_generated: detect_ai_generated_basic(message)
+    }
+  end
+
+  defp classify_commit_type_basic(message) do
+    message_lower = String.downcase(message)
+
+    cond do
+      String.match?(message_lower, ~r/^(feat|feature)[\(\:]/) -> "feat"
+      String.match?(message_lower, ~r/^fix[\(\:]/) -> "fix"
+      String.match?(message_lower, ~r/^docs[\(\:]/) -> "docs"
+      String.match?(message_lower, ~r/^style[\(\:]/) -> "style"
+      String.match?(message_lower, ~r/^refactor[\(\:]/) -> "refactor"
+      String.match?(message_lower, ~r/^test[\(\:]/) -> "test"
+      String.match?(message_lower, ~r/^chore[\(\:]/) -> "chore"
+      String.match?(message_lower, ~r/^perf[\(\:]/) -> "perf"
+      String.match?(message_lower, ~r/^ci[\(\:]/) -> "ci"
+      String.match?(message_lower, ~r/^build[\(\:]/) -> "build"
+      String.match?(message_lower, ~r/^revert[\(\:]/) -> "revert"
+      # Fallback analysis based on keywords
+      String.contains?(message_lower, ["add", "implement", "create", "new"]) -> "feat"
+      String.contains?(message_lower, ["fix", "bug", "issue", "error"]) -> "fix"
+      String.contains?(message_lower, ["update", "change", "modify"]) -> "chore"
+      String.contains?(message_lower, ["remove", "delete", "clean"]) -> "chore"
+      String.contains?(message_lower, ["test", "spec"]) -> "test"
+      String.contains?(message_lower, ["doc", "readme", "comment"]) -> "docs"
+      true -> "other"
+    end
+  end
+
+  defp analyze_sentiment_basic(message) do
+    message_lower = String.downcase(message)
+
+    positive_words = [
+      "add",
+      "improve",
+      "enhance",
+      "optimize",
+      "better",
+      "new",
+      "feature",
+      "upgrade",
+      "implement"
+    ]
+
+    negative_words = [
+      "fix",
+      "bug",
+      "error",
+      "issue",
+      "problem",
+      "fail",
+      "broken",
+      "remove",
+      "delete",
+      "deprecated"
+    ]
+
+    positive_count = Enum.count(positive_words, &String.contains?(message_lower, &1))
+    negative_count = Enum.count(negative_words, &String.contains?(message_lower, &1))
+
+    cond do
+      positive_count > negative_count -> "positive"
+      negative_count > positive_count -> "negative"
+      true -> "neutral"
+    end
+  end
+
+  defp estimate_complexity_basic(message) do
+    word_count = word_count_basic(message)
+
+    # Check for complexity indicators
+    complexity_indicators = [
+      String.contains?(message, ["refactor", "restructure", "rewrite"]),
+      String.contains?(message, ["breaking change", "BREAKING CHANGE"]),
+      String.contains?(message, ["migrate", "migration"]),
+      String.contains?(message, ["database", "schema"]),
+      String.contains?(message, ["api", "endpoint", "route"]),
+      word_count > 10
+    ]
+
+    complexity_score = Enum.count(complexity_indicators, & &1)
+
+    cond do
+      complexity_score >= 3 -> "high"
+      complexity_score >= 1 -> "medium"
+      true -> "low"
+    end
+  end
+
+  defp word_count_basic(message) do
+    message
+    |> String.split()
+    |> length()
+  end
+
+  defp has_breaking_change_basic?(message) do
+    message_lower = String.downcase(message)
+
+    String.contains?(message_lower, ["breaking change", "breaking:", "!:"]) or
+      String.contains?(message, ["BREAKING CHANGE", "BREAKING:"])
+  end
+
+  defp detect_ai_generated_basic(message) do
+    # Simplified version of AI detection for basic analysis
+    message_lower = String.downcase(message)
+    word_count = word_count_basic(message)
+
+    initial_score = 0
+
+    # Check for AI-like phrases
+    ai_phrases = [
+      "this commit",
+      "this change",
+      "this update",
+      "in order to",
+      "for the purpose of",
+      "comprehensive",
+      "substantial",
+      "enhanced",
+      "optimized",
+      "streamlined"
+    ]
+
+    ai_phrase_count = Enum.count(ai_phrases, &String.contains?(message_lower, &1))
+    score_after_phrases = initial_score + ai_phrase_count * 2
+
+    # Check for overly formal language in simple changes
+    score_after_formal =
+      if String.contains?(message_lower, ["fix", "add", "remove"]) and word_count > 6 do
+        formal_words = ["implement", "facilitate", "utilize", "establish", "enhance"]
+        formal_count = Enum.count(formal_words, &String.contains?(message_lower, &1))
+        score_after_phrases + formal_count * 2
+      else
+        score_after_phrases
+      end
+
+    # Check for AI sentence patterns
+    final_score =
+      if String.match?(message_lower, ~r/^(add|implement|create)\s+.*\s+(to|for)\s+/) do
+        score_after_formal + 2
+      else
+        score_after_formal
+      end
+
+    # Convert to simple classification
+    cond do
+      final_score >= 6 -> "highly_likely"
+      final_score >= 4 -> "likely"
+      final_score >= 2 -> "possible"
+      true -> "unlikely"
     end
   end
 
@@ -649,11 +995,11 @@ defmodule GitColorsWeb.ColorLive do
         {"fatal: not a git repository", 128}
 
       _ ->
-        # Return some mock commit hashes for testing
+        # Return some mock commit hashes with messages for testing
         mock_commits = """
-        abc123def456
-        789ghi012jkl
-        345mno678pqr
+        abc123def456|Add new feature for user authentication
+        789ghi012jkl|Fix bug in password validation
+        345mno678pqr|Update documentation for API endpoints
         """
 
         {mock_commits, 0}
@@ -726,11 +1072,93 @@ defmodule GitColorsWeb.ColorLive do
     Float.round(brightness, 1)
   end
 
-  def get_most_common_color(colors) do
-    colors
+  def get_most_common_color(commits) when is_list(commits) do
+    commits
+    |> Enum.map(fn
+      %{color: color} -> color
+      color when is_binary(color) -> color
+    end)
     |> Enum.frequencies()
     |> Enum.max_by(fn {_color, count} -> count end)
     |> elem(0)
+  end
+
+  # Helper functions for working with commit data
+  def extract_colors(commits) do
+    Enum.map(commits, fn
+      %{color: color} -> color
+      color when is_binary(color) -> color
+    end)
+  end
+
+  def get_commit_analysis_stats(commits) do
+    analyses = Enum.map(commits, & &1.analysis)
+
+    type_counts =
+      analyses
+      |> Enum.group_by(& &1.type)
+      |> Enum.map(fn {type, list} -> {type, length(list)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+
+    sentiment_counts =
+      analyses
+      |> Enum.group_by(& &1.sentiment)
+      |> Enum.map(fn {sentiment, list} -> {sentiment, length(list)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+
+    complexity_counts =
+      analyses
+      |> Enum.group_by(& &1.complexity)
+      |> Enum.map(fn {complexity, list} -> {complexity, length(list)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+
+    breaking_changes = Enum.count(analyses, & &1.has_breaking_change)
+
+    # Calculate word count statistics
+    word_counts = Enum.map(analyses, & &1.word_count)
+
+    avg_word_count =
+      if length(word_counts) > 0,
+        do: Float.round(Enum.sum(word_counts) / length(word_counts), 1),
+        else: 0
+
+    max_word_count = if length(word_counts) > 0, do: Enum.max(word_counts), else: 0
+    min_word_count = if length(word_counts) > 0, do: Enum.min(word_counts), else: 0
+
+    # Calculate AI generation statistics
+    ai_generated_counts =
+      analyses
+      |> Enum.group_by(& &1.is_ai_generated)
+      |> Enum.map(fn {ai_level, list} -> {ai_level, length(list)} end)
+      |> Enum.sort_by(&elem(&1, 1), :desc)
+
+    # Count likely AI-generated commits (likely + highly_likely)
+    likely_ai_count =
+      analyses
+      |> Enum.count(&(&1.is_ai_generated in ["likely", "highly_likely"]))
+
+    %{
+      type_distribution: type_counts,
+      sentiment_distribution: sentiment_counts,
+      complexity_distribution: complexity_counts,
+      breaking_changes: breaking_changes,
+      total_commits: length(commits),
+      word_count_stats: %{
+        average: avg_word_count,
+        max: max_word_count,
+        min: min_word_count,
+        total_words: Enum.sum(word_counts)
+      },
+      ai_generation_stats: %{
+        distribution: ai_generated_counts,
+        likely_ai_count: likely_ai_count,
+        likely_ai_percentage:
+          if(length(commits) > 0,
+            do: Float.round(likely_ai_count / length(commits) * 100, 1),
+            else: 0
+          )
+      }
+    }
   end
 
   def calculate_grid_columns(commit_count) do
@@ -747,9 +1175,12 @@ defmodule GitColorsWeb.ColorLive do
   defp generate_random_color do
     # Generate a random 6-character hex color with better brightness
     # Ensure colors are not too dark by setting minimum values
-    r = :rand.uniform(200) + 55  # 55-255
-    g = :rand.uniform(200) + 55  # 55-255
-    b = :rand.uniform(200) + 55  # 55-255
+    # 55-255
+    r = :rand.uniform(200) + 55
+    # 55-255
+    g = :rand.uniform(200) + 55
+    # 55-255
+    b = :rand.uniform(200) + 55
 
     [r, g, b]
     |> Enum.map(&Integer.to_string(&1, 16))
@@ -764,5 +1195,12 @@ defmodule GitColorsWeb.ColorLive do
       color = generate_random_color()
       {letter, color}
     end)
+  end
+
+  # Test helper function (only available in test environment)
+  if Mix.env() == :test do
+    def __test_perform_basic_analysis__(message) do
+      perform_basic_analysis(message)
+    end
   end
 end
