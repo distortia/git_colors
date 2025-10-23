@@ -11,7 +11,23 @@ defmodule GitColors.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      test_coverage: [
+        ignore_modules: [
+          GitColorsWeb,
+          GitColorsWeb.Gettext,
+          GitColorsWeb.Layouts,
+          GitColorsWeb.PageHTML,
+          GitColorsWeb.ErrorHTML,
+          GitColorsWeb.Telemetry,
+          GitColors.Application,
+          GitColorsWeb.Router,
+          GitColorsWeb.ErrorJSON,
+          GitColorsWeb.Endpoint,
+          GitColorsWeb.ConnCase,
+          GitColors.Mailer
+        ]
+      ]
     ]
   end
 
@@ -83,7 +99,13 @@ defmodule GitColors.MixProject do
         "esbuild git_colors --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "credo --strict", "test"]
+      precommit: [
+        "compile --warning-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "credo --strict",
+        "test"
+      ]
     ]
   end
 end

@@ -12,7 +12,7 @@ defmodule GitColorsWeb.ColorLive do
       <div class="w-80 bg-gray-800 shadow-lg border-r border-gray-700">
         <div class="p-6">
           <h2 class="text-xl font-bold text-gray-100 mb-6">Repository Analysis</h2>
-
+          
     <!-- Form Section -->
           <div class="mb-8">
             <.form for={@form} id="directory-form" phx-submit="link_directory" class="space-y-4">
@@ -87,7 +87,7 @@ defmodule GitColorsWeb.ColorLive do
                   Submit
                 <% end %>
               </button>
-
+              
     <!-- Disclaimer -->
               <div class="mt-3 p-3 bg-yellow-900 border border-yellow-700 rounded-md">
                 <p class="text-yellow-200 text-xs">
@@ -98,7 +98,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </.form>
           </div>
-
+          
     <!-- Repository Info -->
           <%= if @linked_directory do %>
             <div class="mb-6">
@@ -136,7 +136,7 @@ defmodule GitColorsWeb.ColorLive do
               <% end %>
             </div>
           <% end %>
-
+          
     <!-- Selected Color Info -->
           <%= if @selected_color do %>
             <div class="mb-6">
@@ -153,7 +153,7 @@ defmodule GitColorsWeb.ColorLive do
                     <p class="text-sm text-gray-400">Hex Color</p>
                   </div>
                 </div>
-
+                
     <!-- Color Analysis -->
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
@@ -168,7 +168,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-
+          
     <!-- Color Statistics -->
           <%= if @commit_colors != [] && length(@commit_colors) > 10 do %>
             <div class="mb-6">
@@ -203,7 +203,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-
+          
     <!-- Commit Timeline -->
           <%= if @commit_colors != [] do %>
             <div class="mb-6">
@@ -244,7 +244,7 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             </div>
           <% end %>
-
+          
     <!-- Error Messages -->
           <%= if @error_message do %>
             <div class="mt-4 p-4 bg-red-900 border border-red-700 rounded-md">
@@ -255,7 +255,7 @@ defmodule GitColorsWeb.ColorLive do
           <% end %>
         </div>
       </div>
-
+      
     <!-- Pixel Popover -->
       <%= if @show_pixel_popover && @commit_colors != [] do %>
         <div
@@ -310,7 +310,7 @@ defmodule GitColorsWeb.ColorLive do
           </div>
         </div>
       <% end %>
-
+      
     <!-- Main Content -->
       <div class="flex-1 p-8 bg-gray-900">
         <div class="max-w-6xl mx-auto">
@@ -396,7 +396,7 @@ defmodule GitColorsWeb.ColorLive do
           <% end %>
         </div>
       </div>
-
+      
     <!-- Floating Navigation Buttons -->
       <%= if @commit_colors != [] do %>
         <!-- Jump to Bottom Button -->
@@ -531,7 +531,7 @@ defmodule GitColorsWeb.ColorLive do
         _ -> ["-C", repo_path, "log", "--format=%H", "-#{count}"]
       end
 
-    case System.cmd("git", git_args, stderr_to_stdout: true) do
+    case git_cmd("git", git_args) do
       {output, 0} ->
         colors =
           output
@@ -547,6 +547,33 @@ defmodule GitColorsWeb.ColorLive do
 
         Logger.error("Git Colors: #{error_msg}")
         {:error, error_msg}
+    end
+  end
+
+  defp git_cmd(command, args) do
+    if Application.get_env(:git_colors, :test_mode, false) do
+      # Return mock data in test mode
+      mock_git_response(args)
+    else
+      System.cmd(command, args, stderr_to_stdout: true)
+    end
+  end
+
+  defp mock_git_response(args) do
+    # Check if this should simulate an error (for testing error handling)
+    case args do
+      ["-C", "/test/error/path" | _] ->
+        {"fatal: not a git repository", 128}
+
+      _ ->
+        # Return some mock commit hashes for testing
+        mock_commits = """
+        abc123def456
+        789ghi012jkl
+        345mno678pqr
+        """
+
+        {mock_commits, 0}
     end
   end
 
@@ -599,14 +626,14 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   # Helper functions for color analysis
-  defp hex_to_rgb(hex_color) do
+  def hex_to_rgb(hex_color) do
     {r, ""} = String.slice(hex_color, 0, 2) |> Integer.parse(16)
     {g, ""} = String.slice(hex_color, 2, 2) |> Integer.parse(16)
     {b, ""} = String.slice(hex_color, 4, 2) |> Integer.parse(16)
     "#{r}, #{g}, #{b}"
   end
 
-  defp get_brightness(hex_color) do
+  def get_brightness(hex_color) do
     {r, ""} = String.slice(hex_color, 0, 2) |> Integer.parse(16)
     {g, ""} = String.slice(hex_color, 2, 2) |> Integer.parse(16)
     {b, ""} = String.slice(hex_color, 4, 2) |> Integer.parse(16)
@@ -616,14 +643,14 @@ defmodule GitColorsWeb.ColorLive do
     Float.round(brightness, 1)
   end
 
-  defp get_most_common_color(colors) do
+  def get_most_common_color(colors) do
     colors
     |> Enum.frequencies()
     |> Enum.max_by(fn {_color, count} -> count end)
     |> elem(0)
   end
 
-  defp calculate_grid_columns(commit_count) do
+  def calculate_grid_columns(commit_count) do
     cond do
       commit_count <= 100 -> 10
       commit_count <= 500 -> 25
