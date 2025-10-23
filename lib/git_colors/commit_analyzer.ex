@@ -113,19 +113,36 @@ defmodule GitColors.CommitAnalyzer do
   defp classify_commit_type(message) do
     message_lower = String.downcase(message)
 
+    # First try conventional commit pattern matching
+    case classify_conventional_commit(message_lower) do
+      nil -> classify_by_keywords(message_lower)
+      type -> type
+    end
+  end
+
+  defp classify_conventional_commit(message_lower) do
+    # Define conventional commit patterns
+    patterns = [
+      {~r/^(feat|feature)[\(\:]/, "feat"},
+      {~r/^fix[\(\:]/, "fix"},
+      {~r/^docs[\(\:]/, "docs"},
+      {~r/^style[\(\:]/, "style"},
+      {~r/^refactor[\(\:]/, "refactor"},
+      {~r/^test[\(\:]/, "test"},
+      {~r/^chore[\(\:]/, "chore"},
+      {~r/^perf[\(\:]/, "perf"},
+      {~r/^ci[\(\:]/, "ci"},
+      {~r/^build[\(\:]/, "build"},
+      {~r/^revert[\(\:]/, "revert"}
+    ]
+
+    Enum.find_value(patterns, fn {pattern, type} ->
+      if String.match?(message_lower, pattern), do: type
+    end)
+  end
+
+  defp classify_by_keywords(message_lower) do
     cond do
-      String.match?(message_lower, ~r/^(feat|feature)[\(\:]/) -> "feat"
-      String.match?(message_lower, ~r/^fix[\(\:]/) -> "fix"
-      String.match?(message_lower, ~r/^docs[\(\:]/) -> "docs"
-      String.match?(message_lower, ~r/^style[\(\:]/) -> "style"
-      String.match?(message_lower, ~r/^refactor[\(\:]/) -> "refactor"
-      String.match?(message_lower, ~r/^test[\(\:]/) -> "test"
-      String.match?(message_lower, ~r/^chore[\(\:]/) -> "chore"
-      String.match?(message_lower, ~r/^perf[\(\:]/) -> "perf"
-      String.match?(message_lower, ~r/^ci[\(\:]/) -> "ci"
-      String.match?(message_lower, ~r/^build[\(\:]/) -> "build"
-      String.match?(message_lower, ~r/^revert[\(\:]/) -> "revert"
-      # Fallback analysis based on keywords
       String.contains?(message_lower, ["add", "implement", "create", "new"]) -> "feat"
       String.contains?(message_lower, ["fix", "bug", "issue", "error"]) -> "fix"
       String.contains?(message_lower, ["update", "change", "modify"]) -> "chore"
@@ -214,95 +231,76 @@ defmodule GitColors.CommitAnalyzer do
     message_lower = String.downcase(message)
     word_count = word_count(message)
 
-    # Start with base score
+    # Calculate AI detection score using multiple heuristics
     initial_score = 0
+    |> add_ai_phrase_score(message_lower)
+    |> add_formal_language_score(message_lower)
+    |> add_abbreviation_score(message_lower)
+    |> add_length_inconsistency_score(message_lower, word_count)
+    |> add_sentence_pattern_score(message_lower)
+    |> add_template_structure_score(message_lower)
+    |> add_capitalization_score(message, word_count)
 
-    # 1. AI-specific phrases and patterns
+    # Convert score to probability categories
+    categorize_ai_score(initial_score)
+  end
+
+  defp add_ai_phrase_score(score, message_lower) do
     ai_phrases = [
-      "this commit",
-      "this change",
-      "this update",
-      "this modification",
-      "this implementation",
-      "in order to",
-      "for the purpose of",
-      "to ensure that",
-      "with the aim of",
-      "comprehensive",
-      "substantial",
-      "significant enhancement",
-      "improved functionality",
-      "enhanced performance",
-      "optimized implementation",
-      "streamlined process",
-      "refined approach",
-      "robust solution",
-      "seamless integration",
-      "efficient handling"
+      "this commit", "this change", "this update", "this modification", "this implementation",
+      "in order to", "for the purpose of", "to ensure that", "with the aim of",
+      "comprehensive", "substantial", "significant enhancement", "improved functionality",
+      "enhanced performance", "optimized implementation", "streamlined process",
+      "refined approach", "robust solution", "seamless integration", "efficient handling"
     ]
 
     ai_phrase_count = Enum.count(ai_phrases, &String.contains?(message_lower, &1))
-    score_after_phrases = initial_score + ai_phrase_count * 2
+    score + ai_phrase_count * 2
+  end
 
-    # 2. Overly formal language for simple changes
+  defp add_formal_language_score(score, message_lower) do
     formal_words = [
-      "implement",
-      "facilitate",
-      "utilize",
-      "demonstrate",
-      "incorporate",
-      "establish",
-      "maintain",
-      "ensure",
-      "provide",
-      "enhance",
-      "optimize",
-      "streamline",
-      "improve",
-      "refine",
-      "comprehensive",
-      "substantial"
+      "implement", "facilitate", "utilize", "demonstrate", "incorporate", "establish",
+      "maintain", "ensure", "provide", "enhance", "optimize", "streamline",
+      "improve", "refine", "comprehensive", "substantial"
     ]
 
     simple_change_indicators = ["fix", "add", "remove", "update", "change"]
 
-    score_after_formal =
-      if Enum.any?(simple_change_indicators, &String.contains?(message_lower, &1)) do
-        formal_count = Enum.count(formal_words, &String.contains?(message_lower, &1))
-        # Higher penalty for formal words in simple changes
-        score_after_phrases + formal_count * 3
-      else
-        score_after_phrases
-      end
+    if Enum.any?(simple_change_indicators, &String.contains?(message_lower, &1)) do
+      formal_count = Enum.count(formal_words, &String.contains?(message_lower, &1))
+      score + formal_count * 3
+    else
+      score
+    end
+  end
 
-    # 3. Perfect grammar with no abbreviations or common developer shortcuts
+  defp add_abbreviation_score(score, message_lower) do
     common_abbreviations = ["fix:", "feat:", "docs:", "chore:", "wip", "tmp", "temp", "refactor:"]
     has_abbreviations = Enum.any?(common_abbreviations, &String.contains?(message_lower, &1))
 
-    # AI tends to avoid abbreviations
-    score_after_abbrev =
-      unless has_abbreviations do
-        score_after_formal + 1
+    if has_abbreviations do
+      score
+    else
+      score + 1
+    end
+  end
+
+  defp add_length_inconsistency_score(score, message_lower, word_count) do
+    if word_count > 8 do
+      simple_changes = ["fix", "add", "remove", "delete", "update"]
+
+      if Enum.any?(simple_changes, &String.contains?(message_lower, &1)) do
+        score + 2
       else
-        score_after_formal
+        score
       end
+    else
+      score
+    end
+  end
 
-    # 4. Length inconsistencies - too verbose for simple changes
-    score_after_length =
-      if word_count > 8 do
-        # Check if it's a simple change with too many words
-        simple_changes = ["fix", "add", "remove", "delete", "update"]
-
-        if Enum.any?(simple_changes, &String.contains?(message_lower, &1)) do
-          score_after_abbrev + 2
-        else
-          score_after_abbrev
-        end
-      else
-        score_after_abbrev
-      end
-
-    # 5. AI-like sentence structure patterns
+  defp add_sentence_pattern_score(score, message_lower) do
     ai_sentence_patterns = [
       ~r/^(add|implement|create|establish|introduce)\s+.*\s+(to|for)\s+/,
       ~r/^(update|modify|change|refine)\s+.*\s+(to|for)\s+(improve|enhance|optimize)/,
@@ -310,39 +308,30 @@ defmodule GitColors.CommitAnalyzer do
     ]
 
     pattern_matches = Enum.count(ai_sentence_patterns, &Regex.match?(&1, message_lower))
-    score_after_patterns = score_after_length + pattern_matches * 2
+    score + pattern_matches * 2
+  end
 
-    # 6. Repetitive or templated structure
-    score_after_template =
-      if String.contains?(message_lower, [
-           "add support for",
-           "implement support for",
-           "update support for"
-         ]) do
-        score_after_patterns + 2
-      else
-        score_after_patterns
-      end
+  defp add_template_structure_score(score, message_lower) do
+    if String.contains?(message_lower, ["add support for", "implement support for", "update support for"]) do
+      score + 2
+    else
+      score
+    end
+  end
 
-    # 7. Perfect capitalization and punctuation (no casual style)
-    # AI often uses perfect sentence case
-    final_score =
-      if String.match?(message, ~r/^[A-Z][a-z].*[\.!]$/) and word_count > 3 do
-        score_after_template + 1
-      else
-        score_after_template
-      end
+  defp add_capitalization_score(score, message, word_count) do
+    if String.match?(message, ~r/^[A-Z][a-z].*[\.!]$/) and word_count > 3 do
+      score + 1
+    else
+      score
+    end
+  end
 
-    # Convert score to probability
-    # Threshold: score >= 6 suggests likely AI-generated
+  defp categorize_ai_score(final_score) do
     cond do
-      # Very likely AI
       final_score >= 8 -> "highly_likely"
-      # Probably AI
       final_score >= 5 -> "likely"
-      # Could be AI
       final_score >= 3 -> "possible"
-      # Probably human
       true -> "unlikely"
     end
   end

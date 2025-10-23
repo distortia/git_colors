@@ -746,76 +746,69 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   defp fetch_commits(repo_path, count) do
-    # Build git command arguments to get both hash and commit message
-    git_args =
-      case count do
-        "all" -> ["-C", repo_path, "log", "--format=%H|%s"]
-        _ -> ["-C", repo_path, "log", "--format=%H|%s", "-#{count}"]
-      end
+    git_args = build_git_args(repo_path, count)
 
     case git_cmd("git", git_args) do
       {output, 0} ->
-        commits =
-          output
-          |> String.split("\n", trim: true)
-          |> Enum.map(fn line ->
-            case String.split(line, "|", parts: 2) do
-              [hash, message] ->
-                color = String.slice(hash, 0, 6)
-
-                # Only include commits with valid 6-character color
-                if String.length(color) == 6 do
-                  # Always analyze commit message, with fallback to rule-based analysis
-                  analysis =
-                    case GitColors.CommitAnalyzer.analyze_commit(message) do
-                      {:ok, analysis_data} ->
-                        analysis_data
-
-                      {:error, "Models not loaded yet"} ->
-                        # Use rule-based analysis as fallback
-                        perform_basic_analysis(message)
-
-                      {:error, _} ->
-                        perform_basic_analysis(message)
-                    end
-
-                  %{
-                    hash: hash,
-                    color: color,
-                    message: message,
-                    analysis: analysis
-                  }
-                else
-                  nil
-                end
-
-              [hash] ->
-                # Handle case where there's no commit message
-                color = String.slice(hash, 0, 6)
-
-                if String.length(color) == 6 do
-                  %{
-                    hash: hash,
-                    color: color,
-                    message: "",
-                    analysis: perform_basic_analysis("")
-                  }
-                else
-                  nil
-                end
-            end
-          end)
-          |> Enum.filter(& &1)
-
+        commits = parse_commit_output(output)
         {:ok, commits}
 
       {error, status} ->
-        error_msg =
-          "Failed to get commits for repo #{repo_path} (count: #{count}): #{String.trim(error)} (status: #{status})"
-
-        Logger.error("Git Colors: #{error_msg}")
-        {:error, error_msg}
+        handle_git_error(repo_path, count, error, status)
     end
+  end
+
+  defp build_git_args(repo_path, count) do
+    case count do
+      "all" -> ["-C", repo_path, "log", "--format=%H|%s"]
+      _ -> ["-C", repo_path, "log", "--format=%H|%s", "-#{count}"]
+    end
+  end
+
+  defp parse_commit_output(output) do
+    output
+    |> String.split("\n", trim: true)
+    |> Enum.map(&parse_commit_line/1)
+    |> Enum.filter(& &1)
+  end
+
+  defp parse_commit_line(line) do
+    case String.split(line, "|", parts: 2) do
+      [hash, message] -> create_commit_entry(hash, message)
+      [hash] -> create_commit_entry(hash, "")
+    end
+  end
+
+  defp create_commit_entry(hash, message) do
+    color = String.slice(hash, 0, 6)
+
+    if String.length(color) == 6 do
+      analysis = get_commit_analysis(message)
+
+      %{
+        hash: hash,
+        color: color,
+        message: message,
+        analysis: analysis
+      }
+    else
+      nil
+    end
+  end
+
+  defp get_commit_analysis(message) do
+    case GitColors.CommitAnalyzer.analyze_commit(message) do
+      {:ok, analysis_data} -> analysis_data
+      {:error, _} -> perform_basic_analysis(message)
+    end
+  end
+
+  defp handle_git_error(repo_path, count, error, status) do
+    error_msg =
+      "Failed to get commits for repo #{repo_path} (count: #{count}): #{String.trim(error)} (status: #{status})"
+
+    Logger.error("Git Colors: #{error_msg}")
+    {:error, error_msg}
   end
 
   defp perform_basic_analysis(message) do
@@ -832,19 +825,36 @@ defmodule GitColorsWeb.ColorLive do
   defp classify_commit_type_basic(message) do
     message_lower = String.downcase(message)
 
+    # First try conventional commit pattern matching
+    case classify_conventional_commit_basic(message_lower) do
+      nil -> classify_by_keywords_basic(message_lower)
+      type -> type
+    end
+  end
+
+  defp classify_conventional_commit_basic(message_lower) do
+    # Define conventional commit patterns
+    patterns = [
+      {~r/^(feat|feature)[\(\:]/, "feat"},
+      {~r/^fix[\(\:]/, "fix"},
+      {~r/^docs[\(\:]/, "docs"},
+      {~r/^style[\(\:]/, "style"},
+      {~r/^refactor[\(\:]/, "refactor"},
+      {~r/^test[\(\:]/, "test"},
+      {~r/^chore[\(\:]/, "chore"},
+      {~r/^perf[\(\:]/, "perf"},
+      {~r/^ci[\(\:]/, "ci"},
+      {~r/^build[\(\:]/, "build"},
+      {~r/^revert[\(\:]/, "revert"}
+    ]
+
+    Enum.find_value(patterns, fn {pattern, type} ->
+      if String.match?(message_lower, pattern), do: type
+    end)
+  end
+
+  defp classify_by_keywords_basic(message_lower) do
     cond do
-      String.match?(message_lower, ~r/^(feat|feature)[\(\:]/) -> "feat"
-      String.match?(message_lower, ~r/^fix[\(\:]/) -> "fix"
-      String.match?(message_lower, ~r/^docs[\(\:]/) -> "docs"
-      String.match?(message_lower, ~r/^style[\(\:]/) -> "style"
-      String.match?(message_lower, ~r/^refactor[\(\:]/) -> "refactor"
-      String.match?(message_lower, ~r/^test[\(\:]/) -> "test"
-      String.match?(message_lower, ~r/^chore[\(\:]/) -> "chore"
-      String.match?(message_lower, ~r/^perf[\(\:]/) -> "perf"
-      String.match?(message_lower, ~r/^ci[\(\:]/) -> "ci"
-      String.match?(message_lower, ~r/^build[\(\:]/) -> "build"
-      String.match?(message_lower, ~r/^revert[\(\:]/) -> "revert"
-      # Fallback analysis based on keywords
       String.contains?(message_lower, ["add", "implement", "create", "new"]) -> "feat"
       String.contains?(message_lower, ["fix", "bug", "issue", "error"]) -> "fix"
       String.contains?(message_lower, ["update", "change", "modify"]) -> "chore"
@@ -1184,8 +1194,7 @@ defmodule GitColorsWeb.ColorLive do
 
     [r, g, b]
     |> Enum.map(&Integer.to_string(&1, 16))
-    |> Enum.map(&String.pad_leading(&1, 2, "0"))
-    |> Enum.join("")
+    |> Enum.map_join("", &String.pad_leading(&1, 2, "0"))
   end
 
   defp generate_colorful_letters(text) do
