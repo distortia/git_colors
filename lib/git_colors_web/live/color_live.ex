@@ -115,7 +115,7 @@ defmodule GitColorsWeb.ColorLive do
                   <p class="text-yellow-200 text-xs">
                     <span class="font-medium">⚠️ Large Repositories:</span>
                     Repositories with 10k+ commits may take time to process.
-                    Consider using smaller commit counts for faster results.
+                    Consider using smaller commit counts for faster results or testing.
                   </p>
                 </div>
               </.form>
@@ -345,7 +345,7 @@ defmodule GitColorsWeb.ColorLive do
         <div class="flex-1 p-4 lg:p-8 bg-gray-900">
           <div class="max-w-6xl mx-auto">
             <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-4 text-center">
-              Git Commits to Colors
+              Git Commits to <%= for {letter, color} <- @title_colors do %><span style={"color: ##{color}; transition: color 0.5s ease-in-out;"}><%= letter %></span><% end %>
             </h1>
             <p class="text-center text-gray-400 mb-6 lg:mb-8 text-sm lg:text-base">
               Each color box represents the first 6 characters of a commit hash from
@@ -486,6 +486,11 @@ defmodule GitColorsWeb.ColorLive do
 
     form = to_form(%{"commit_count" => "100"})
 
+    # Start timer for color rotation (2 seconds interval)
+    if connected?(socket) do
+      Process.send_after(self(), :rotate_colors, 2000)
+    end
+
     socket =
       socket
       |> assign(:form, form)
@@ -497,6 +502,7 @@ defmodule GitColorsWeb.ColorLive do
       |> assign(:error_message, nil)
       |> assign(:show_pixel_popover, false)
       |> assign(:show_mobile_sidebar, false)
+      |> assign(:title_colors, generate_colorful_letters("COLORS"))
 
     {:ok, socket}
   end
@@ -564,6 +570,16 @@ defmodule GitColorsWeb.ColorLive do
 
         {:noreply, socket}
     end
+  end
+
+  def handle_info(:rotate_colors, socket) do
+    # Generate new colors for the title
+    new_title_colors = generate_colorful_letters("COLORS")
+
+    # Schedule next rotation
+    Process.send_after(self(), :rotate_colors, 2000)
+
+    {:noreply, assign(socket, :title_colors, new_title_colors)}
   end
 
   defp get_limited_commits(repo_path, count) do
@@ -726,5 +742,27 @@ defmodule GitColorsWeb.ColorLive do
       commit_count <= 10_000 -> 60
       true -> 80
     end
+  end
+
+  defp generate_random_color do
+    # Generate a random 6-character hex color with better brightness
+    # Ensure colors are not too dark by setting minimum values
+    r = :rand.uniform(200) + 55  # 55-255
+    g = :rand.uniform(200) + 55  # 55-255
+    b = :rand.uniform(200) + 55  # 55-255
+
+    [r, g, b]
+    |> Enum.map(&Integer.to_string(&1, 16))
+    |> Enum.map(&String.pad_leading(&1, 2, "0"))
+    |> Enum.join("")
+  end
+
+  defp generate_colorful_letters(text) do
+    text
+    |> String.graphemes()
+    |> Enum.map(fn letter ->
+      color = generate_random_color()
+      {letter, color}
+    end)
   end
 end

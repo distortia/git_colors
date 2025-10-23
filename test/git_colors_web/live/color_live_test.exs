@@ -7,8 +7,8 @@ defmodule GitColorsWeb.ColorLiveTest do
     test "disconnected and connected render", %{conn: conn} do
       {:ok, page_live, disconnected_html} = live(conn, ~p"/")
 
-      assert disconnected_html =~ "Git Commits to Colors"
-      assert render(page_live) =~ "Git Commits to Colors"
+      assert disconnected_html =~ "Git Commits to"
+      assert render(page_live) =~ "Git Commits to"
     end
 
     test "displays repository analysis form", %{conn: conn} do
