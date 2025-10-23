@@ -114,7 +114,7 @@ defmodule GitColorsWeb.ColorLive do
                 <div class="mt-3 p-3 bg-yellow-900 border border-yellow-700 rounded-md">
                   <p class="text-yellow-200 text-xs">
                     <span class="font-medium">⚠️ Large Repositories:</span>
-                    Repositories with 100k+ commits may take time to process.
+                    Repositories with 10k+ commits may take time to process.
                     Consider using smaller commit counts for faster results.
                   </p>
                 </div>

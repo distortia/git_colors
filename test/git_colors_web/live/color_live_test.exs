@@ -40,7 +40,7 @@ defmodule GitColorsWeb.ColorLiveTest do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "⚠️ Large Repositories:"
-      assert html =~ "100k+ commits may take time to process"
+      assert html =~ "10k+ commits may take time to process"
     end
 
     test "displays no repository loaded state initially", %{conn: conn} do
