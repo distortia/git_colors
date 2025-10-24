@@ -2,6 +2,9 @@
 
 A Phoenix LiveView application that visualizes git commit history using AI-powered analysis. GitColors transforms your commit messages into colorful, interactive displays while providing intelligent insights about your development patterns.
 
+
+This project was mainly an investigation into the capabilities of Copilot and Claude Sonnet 4
+
 ## 🌟 Features
 
 ### 🎨 **Visual Commit Display**
