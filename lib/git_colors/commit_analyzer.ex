@@ -143,6 +143,7 @@ defmodule GitColors.CommitAnalyzer do
 
   defp classify_by_keywords(message_lower) do
     cond do
+      String.contains?(message_lower, ["revert"]) -> "revert"
       String.contains?(message_lower, ["add", "implement", "create", "new"]) -> "feat"
       String.contains?(message_lower, ["fix", "bug", "issue", "error"]) -> "fix"
       String.contains?(message_lower, ["update", "change", "modify"]) -> "chore"

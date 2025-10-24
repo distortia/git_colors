@@ -10,6 +10,9 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         {"test: add user authentication tests", "test"},
         {"refactor: improve code structure", "refactor"},
         {"chore: update dependencies", "chore"},
+        {"revert: undo previous changes", "revert"},
+        {"Revert \"add broken feature\"", "revert"},
+        {"This reverts commit abc123", "revert"},
         {"add tests", "feat"},
         {"fix issues", "fix"},
         {"update agents.md", "chore"},
@@ -347,6 +350,84 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
       assert ai_distribution_map["unlikely"] == 2
       assert ai_distribution_map["likely"] == 1
       assert ai_distribution_map["highly_likely"] == 1
+    end
+
+    test "calculates revert statistics correctly" do
+      # Create mock commits with some reverts
+      commits = [
+        %{
+          hash: "abc123",
+          color: "ff0000",
+          message: "feat: add new feature",
+          analysis: %{
+            type: "feat",
+            sentiment: "positive",
+            complexity: "medium",
+            word_count: 4,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
+        },
+        %{
+          hash: "def456",
+          color: "00ff00",
+          message: "revert: undo previous commit",
+          analysis: %{
+            type: "revert",
+            sentiment: "negative",
+            complexity: "low",
+            word_count: 4,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
+        },
+        %{
+          hash: "ghi789",
+          color: "0000ff",
+          message: "fix: bug fix",
+          analysis: %{
+            type: "fix",
+            sentiment: "negative",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
+        },
+        %{
+          hash: "jkl012",
+          color: "ffff00",
+          message: "Revert \"previous feature implementation\"",
+          analysis: %{
+            type: "revert",
+            sentiment: "negative",
+            complexity: "low",
+            word_count: 4,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
+        }
+      ]
+
+      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+
+      # Check revert statistics
+      assert stats.revert_stats.count == 2
+      assert stats.revert_stats.percentage == 50.0
+
+      # Test with no reverts
+      no_revert_commits = [
+        %{
+          hash: "abc123",
+          color: "ff0000",
+          message: "feat: add feature",
+          analysis: %{type: "feat", sentiment: "positive", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+        }
+      ]
+
+      stats_no_reverts = GitColorsWeb.ColorLive.get_commit_analysis_stats(no_revert_commits)
+      assert stats_no_reverts.revert_stats.count == 0
+      assert stats_no_reverts.revert_stats.percentage == 0.0
     end
   end
 

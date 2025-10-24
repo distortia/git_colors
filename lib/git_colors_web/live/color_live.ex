@@ -341,6 +341,23 @@ defmodule GitColorsWeb.ColorLive do
                         </div>
                       </div>
                     <% end %>
+
+                    <%= if analysis_stats.revert_stats.count > 0 do %>
+                      <div class="bg-orange-800 bg-opacity-50 rounded p-2">
+                        <div class="flex justify-between items-center mb-1">
+                          <span class="text-orange-200 font-medium text-xs">Reverts:</span>
+                          <span class="text-orange-100 font-mono text-xs px-1.5 py-0.5 bg-orange-900 rounded">
+                            {analysis_stats.revert_stats.count}
+                          </span>
+                        </div>
+                        <div class="text-xs text-orange-300">
+                          {analysis_stats.revert_stats.percentage}% of commits
+                        </div>
+                        <div class="text-xs text-orange-400 mt-1 italic">
+                          Commits that undo previous changes
+                        </div>
+                      </div>
+                    <% end %>
                   </div>
                 </div>
               </div>
@@ -855,6 +872,7 @@ defmodule GitColorsWeb.ColorLive do
 
   defp classify_by_keywords_basic(message_lower) do
     cond do
+      String.contains?(message_lower, ["revert"]) -> "revert"
       String.contains?(message_lower, ["add", "implement", "create", "new"]) -> "feat"
       String.contains?(message_lower, ["fix", "bug", "issue", "error"]) -> "fix"
       String.contains?(message_lower, ["update", "change", "modify"]) -> "chore"
@@ -1147,12 +1165,24 @@ defmodule GitColorsWeb.ColorLive do
       analyses
       |> Enum.count(&(&1.is_ai_generated in ["likely", "highly_likely"]))
 
+    # Calculate revert statistics
+    revert_count = Enum.count(analyses, &(&1.type == "revert"))
+
+    revert_percentage =
+      if length(commits) > 0,
+        do: Float.round(revert_count / length(commits) * 100, 1),
+        else: 0
+
     %{
       type_distribution: type_counts,
       sentiment_distribution: sentiment_counts,
       complexity_distribution: complexity_counts,
       breaking_changes: breaking_changes,
       total_commits: length(commits),
+      revert_stats: %{
+        count: revert_count,
+        percentage: revert_percentage
+      },
       word_count_stats: %{
         average: avg_word_count,
         max: max_word_count,
