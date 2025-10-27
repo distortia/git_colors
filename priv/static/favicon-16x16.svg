@@ -1,0 +1,9 @@
+<!-- 16x16 favicon -->
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <rect width="16" height="16" fill="#1f2937"/>
+  <!-- 2x2 grid for small size -->
+  <rect x="2" y="2" width="5" height="5" fill="#ff6b6b"/>
+  <rect x="9" y="2" width="5" height="5" fill="#4ecdc4"/>
+  <rect x="2" y="9" width="5" height="5" fill="#45b7d1"/>
+  <rect x="9" y="9" width="5" height="5" fill="#96ceb4"/>
+</svg>
