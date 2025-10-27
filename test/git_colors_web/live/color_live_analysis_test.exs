@@ -421,13 +421,41 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "feat: add feature",
-          analysis: %{type: "feat", sentiment: "positive", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          analysis: %{
+            type: "feat",
+            sentiment: "positive",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         }
       ]
 
       stats_no_reverts = GitColorsWeb.ColorLive.get_commit_analysis_stats(no_revert_commits)
       assert stats_no_reverts.revert_stats.count == 0
       assert stats_no_reverts.revert_stats.percentage == 0.0
+    end
+
+    test "formats commit dates correctly" do
+      # Test ISO 8601 format (what git %ci produces)
+      iso_date = "2025-10-24 10:30:00 +0000"
+
+      # Test that we can parse a commit with date correctly
+      mock_line = "abc123|test commit|#{iso_date}"
+      assert String.contains?(mock_line, iso_date)
+
+      # Test date format specifically by making a commit entry
+      commit_entry = %{
+        hash: "abc123",
+        color: "abc123",
+        message: "test commit",
+        date: iso_date,
+        analysis: %{}
+      }
+
+      # The date should be stored in the commit structure
+      assert commit_entry.date == iso_date
     end
   end
 

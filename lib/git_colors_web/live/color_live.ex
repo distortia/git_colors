@@ -393,7 +393,6 @@ defmodule GitColorsWeb.ColorLive do
                       <div
                         class="w-1 h-1"
                         style={"background-color: ##{commit.color}"}
-                        title={"#{commit.message} (##{commit.color})"}
                       >
                       </div>
                     <% end %>
@@ -464,7 +463,7 @@ defmodule GitColorsWeb.ColorLive do
                         <div
                           class="h-1 w-full"
                           style={"background-color: ##{commit.color}"}
-                          title={"#{commit.message} (##{commit.color})"}
+                          title={"#{commit.message} (##{commit.color}) - #{format_commit_date(commit.date)}"}
                         >
                         </div>
                       <% end %>
@@ -524,7 +523,7 @@ defmodule GitColorsWeb.ColorLive do
                       </div>
                     <% end %>
                     <.tooltip
-                      text={"#{commit.message} (##{commit.color}) - #{commit.analysis.type}"}
+                      text={"#{commit.message} (##{commit.color}) - #{commit.analysis.type} - #{format_commit_date(commit.date)}"}
                       position="tooltip-top"
                     >
                       <div
@@ -777,8 +776,8 @@ defmodule GitColorsWeb.ColorLive do
 
   defp build_git_args(repo_path, count) do
     case count do
-      "all" -> ["-C", repo_path, "log", "--format=%H|%s"]
-      _ -> ["-C", repo_path, "log", "--format=%H|%s", "-#{count}"]
+      "all" -> ["-C", repo_path, "log", "--format=%H|%s|%ci"]
+      _ -> ["-C", repo_path, "log", "--format=%H|%s|%ci", "-#{count}"]
     end
   end
 
@@ -790,13 +789,14 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   defp parse_commit_line(line) do
-    case String.split(line, "|", parts: 2) do
-      [hash, message] -> create_commit_entry(hash, message)
-      [hash] -> create_commit_entry(hash, "")
+    case String.split(line, "|", parts: 3) do
+      [hash, message, date] -> create_commit_entry(hash, message, date)
+      [hash, message] -> create_commit_entry(hash, message, "")
+      [hash] -> create_commit_entry(hash, "", "")
     end
   end
 
-  defp create_commit_entry(hash, message) do
+  defp create_commit_entry(hash, message, date) do
     color = String.slice(hash, 0, 6)
 
     if String.length(color) == 6 do
@@ -806,6 +806,7 @@ defmodule GitColorsWeb.ColorLive do
         hash: hash,
         color: color,
         message: message,
+        date: date,
         analysis: analysis
       }
     else
@@ -1023,11 +1024,11 @@ defmodule GitColorsWeb.ColorLive do
         {"fatal: not a git repository", 128}
 
       _ ->
-        # Return some mock commit hashes with messages for testing
+        # Return some mock commit hashes with messages and dates for testing
         mock_commits = """
-        abc123def456|Add new feature for user authentication
-        789ghi012jkl|Fix bug in password validation
-        345mno678pqr|Update documentation for API endpoints
+        abc123def456|Add new feature for user authentication|2025-10-24 10:30:00 +0000
+        789ghi012jkl|Fix bug in password validation|2025-10-23 14:15:30 +0000
+        345mno678pqr|Update documentation for API endpoints|2025-10-22 09:45:15 +0000
         """
 
         {mock_commits, 0}
@@ -1199,6 +1200,27 @@ defmodule GitColorsWeb.ColorLive do
           )
       }
     }
+  end
+
+  defp format_commit_date(""), do: "Unknown date"
+  defp format_commit_date(nil), do: "Unknown date"
+
+  defp format_commit_date(date_string) when is_binary(date_string) do
+    # Git %ci format: "2025-10-24 10:52:50 -0400"
+    # Parse and format as MM/DD/YYYY (US format)
+    case String.split(date_string, " ") do
+      [date_part | _] ->
+        case String.split(date_part, "-") do
+          [year, month, day] ->
+            "#{month}/#{day}/#{year}"
+
+          _ ->
+            date_part  # Return original date part if parsing fails
+        end
+
+      _ ->
+        String.slice(date_string, 0..10)  # Just show first part if parsing fails
+    end |> dbg()
   end
 
   def calculate_grid_columns(commit_count) do

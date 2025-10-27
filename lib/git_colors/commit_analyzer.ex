@@ -21,19 +21,13 @@ defmodule GitColors.CommitAnalyzer do
     GenServer.call(__MODULE__, {:analyze, message}, 10_000)
   end
 
-  def ready?() do
-    try do
-      GenServer.call(__MODULE__, :ready?, 5_000)
-    rescue
-      _ ->
-        false
-    catch
-      :exit, {:timeout, _} ->
-        false
-
-      :exit, {:noproc, _} ->
-        false
+  def ready? do
+    case :sys.get_state(__MODULE__) do
+      %{model_ready: true} -> true
+      _ -> false
     end
+  rescue
+    _ -> false
   end
 
   # GenServer Callbacks
@@ -72,31 +66,29 @@ defmodule GitColors.CommitAnalyzer do
 
   # Private Functions
 
-  defp load_models() do
-    try do
-      # Load a lightweight sentiment analysis model
-      {:ok, model_info} =
-        Bumblebee.load_model({:hf, "cardiffnlp/twitter-roberta-base-sentiment-latest"})
+  defp load_models do
+    # Load a lightweight sentiment analysis model
+    {:ok, model_info} =
+      Bumblebee.load_model({:hf, "cardiffnlp/twitter-roberta-base-sentiment-latest"})
 
-      {:ok, tokenizer} =
-        Bumblebee.load_tokenizer({:hf, "cardiffnlp/twitter-roberta-base-sentiment-latest"})
+    {:ok, tokenizer} =
+      Bumblebee.load_tokenizer({:hf, "cardiffnlp/twitter-roberta-base-sentiment-latest"})
 
-      # Create a serving for efficient inference
-      serving =
-        Bumblebee.Text.text_classification(model_info, tokenizer,
-          compile: [batch_size: 1, sequence_length: 128],
-          defn_options: [compiler: EXLA]
-        )
+    # Create a serving for efficient inference
+    serving =
+      Bumblebee.Text.text_classification(model_info, tokenizer,
+        compile: [batch_size: 1, sequence_length: 128],
+        defn_options: [compiler: EXLA]
+      )
 
-      send(self(), {:models_loaded, serving})
-    rescue
-      error ->
-        Logger.error(
-          "Failed to load sentiment model, falling back to basic analysis: #{inspect(error)}"
-        )
+    send(self(), {:models_loaded, serving})
+  rescue
+    error ->
+      Logger.error(
+        "Failed to load sentiment model, falling back to basic analysis: #{inspect(error)}"
+      )
 
-        send(self(), {:models_loaded, nil})
-    end
+      send(self(), {:models_loaded, nil})
   end
 
   defp perform_analysis(message, sentiment_serving) do
@@ -172,24 +164,22 @@ defmodule GitColors.CommitAnalyzer do
   end
 
   defp analyze_sentiment(message, serving) do
-    try do
-      case Nx.Serving.batched_run(serving, message) do
-        %{predictions: [%{label: label, score: score}]} when score > 0.6 ->
-          case label do
-            "LABEL_0" -> "negative"
-            "LABEL_1" -> "neutral"
-            "LABEL_2" -> "positive"
-            _ -> "neutral"
-          end
+    case Nx.Serving.batched_run(serving, message) do
+      %{predictions: [%{label: label, score: score}]} when score > 0.6 ->
+        case label do
+          "LABEL_0" -> "negative"
+          "LABEL_1" -> "neutral"
+          "LABEL_2" -> "positive"
+          _ -> "neutral"
+        end
 
-        _ ->
-          # Fallback to keyword-based analysis if confidence is low
-          analyze_sentiment(message, nil)
-      end
-    rescue
       _ ->
+        # Fallback to keyword-based analysis if confidence is low
         analyze_sentiment(message, nil)
     end
+  rescue
+    _ ->
+      analyze_sentiment(message, nil)
   end
 
   defp estimate_complexity(message) do
