@@ -188,6 +188,40 @@ defmodule GitColorsWeb.ColorLive do
                       <span class="text-gray-200">{get_brightness(@selected_color)}%</span>
                     </div>
                   </div>
+
+                  <!-- Commit Information -->
+                  <%= if @commit_colors != [] do %>
+                    <% matching_commits = get_commits_for_color(@commit_colors, @selected_color) %>
+                    <%= if length(matching_commits) > 0 do %>
+                      <div class="mt-4 pt-4 border-t border-gray-600">
+                        <h4 class="text-sm font-semibold text-gray-100 mb-3">
+                          Commits with this color ({length(matching_commits)})
+                        </h4>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                          <%= for commit <- Enum.take(matching_commits, 10) do %>
+                            <div class="bg-gray-800 rounded p-2 text-xs">
+                              <div class="flex justify-between items-start mb-1">
+                                <span class="font-mono text-gray-300">#{String.slice(commit.hash, 0, 7)}</span>
+                                <span class="text-gray-500">#{format_commit_date(commit.date)}</span>
+                              </div>
+                              <p class="text-gray-200 line-clamp-2">{commit.message}</p>
+                              <div class="flex justify-between items-center mt-1">
+                                <span class="px-1.5 py-0.5 text-xs bg-blue-800 text-blue-200 rounded">
+                                  {commit.analysis.type}
+                                </span>
+                                <span class="text-gray-500">{commit.analysis.word_count} words</span>
+                              </div>
+                            </div>
+                          <% end %>
+                          <%= if length(matching_commits) > 10 do %>
+                            <div class="text-center text-gray-500 text-xs pt-2">
+                              ... and {length(matching_commits) - 10} more commits
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  <% end %>
                 </div>
               </div>
             <% end %>
@@ -1220,7 +1254,7 @@ defmodule GitColorsWeb.ColorLive do
 
       _ ->
         String.slice(date_string, 0..10)  # Just show first part if parsing fails
-    end |> dbg()
+    end
   end
 
   def calculate_grid_columns(commit_count) do
@@ -1247,6 +1281,12 @@ defmodule GitColorsWeb.ColorLive do
     [r, g, b]
     |> Enum.map(&Integer.to_string(&1, 16))
     |> Enum.map_join("", &String.pad_leading(&1, 2, "0"))
+  end
+
+  def get_commits_for_color(commits, color) do
+    commits
+    |> Enum.filter(&(&1.color == color))
+    |> Enum.sort_by(& &1.date, :desc)  # Most recent first - ISO dates sort correctly as strings
   end
 
   defp generate_colorful_letters(text) do
