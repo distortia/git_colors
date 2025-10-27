@@ -539,10 +539,10 @@ defmodule GitColorsWeb.ColorLive do
               <%= if @commit_colors != [] do %>
                 {if @commit_count == "all",
                   do: "all",
-                  else: "the most recent #{@commit_count || "100"}"} commits
+                  else: "the most recent #{@commit_count || "100"}"} commits.
               <% else %>
-                your repository commits
-              <% end %>.
+                your repository commits.
+              <% end %>
             </p>
             <%= if @commit_colors != [] do %>
               <div class="bg-gray-800 rounded-lg shadow-md p-4 lg:p-6 border border-gray-700">
