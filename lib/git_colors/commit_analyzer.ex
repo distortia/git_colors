@@ -223,14 +223,15 @@ defmodule GitColors.CommitAnalyzer do
     word_count = word_count(message)
 
     # Calculate AI detection score using multiple heuristics
-    initial_score = 0
-    |> add_ai_phrase_score(message_lower)
-    |> add_formal_language_score(message_lower)
-    |> add_abbreviation_score(message_lower)
-    |> add_length_inconsistency_score(message_lower, word_count)
-    |> add_sentence_pattern_score(message_lower)
-    |> add_template_structure_score(message_lower)
-    |> add_capitalization_score(message, word_count)
+    initial_score =
+      0
+      |> add_ai_phrase_score(message_lower)
+      |> add_formal_language_score(message_lower)
+      |> add_abbreviation_score(message_lower)
+      |> add_length_inconsistency_score(message_lower, word_count)
+      |> add_sentence_pattern_score(message_lower)
+      |> add_template_structure_score(message_lower)
+      |> add_capitalization_score(message, word_count)
 
     # Convert score to probability categories
     categorize_ai_score(initial_score)
@@ -238,11 +239,26 @@ defmodule GitColors.CommitAnalyzer do
 
   defp add_ai_phrase_score(score, message_lower) do
     ai_phrases = [
-      "this commit", "this change", "this update", "this modification", "this implementation",
-      "in order to", "for the purpose of", "to ensure that", "with the aim of",
-      "comprehensive", "substantial", "significant enhancement", "improved functionality",
-      "enhanced performance", "optimized implementation", "streamlined process",
-      "refined approach", "robust solution", "seamless integration", "efficient handling"
+      "this commit",
+      "this change",
+      "this update",
+      "this modification",
+      "this implementation",
+      "in order to",
+      "for the purpose of",
+      "to ensure that",
+      "with the aim of",
+      "comprehensive",
+      "substantial",
+      "significant enhancement",
+      "improved functionality",
+      "enhanced performance",
+      "optimized implementation",
+      "streamlined process",
+      "refined approach",
+      "robust solution",
+      "seamless integration",
+      "efficient handling"
     ]
 
     ai_phrase_count = Enum.count(ai_phrases, &String.contains?(message_lower, &1))
@@ -251,9 +267,22 @@ defmodule GitColors.CommitAnalyzer do
 
   defp add_formal_language_score(score, message_lower) do
     formal_words = [
-      "implement", "facilitate", "utilize", "demonstrate", "incorporate", "establish",
-      "maintain", "ensure", "provide", "enhance", "optimize", "streamline",
-      "improve", "refine", "comprehensive", "substantial"
+      "implement",
+      "facilitate",
+      "utilize",
+      "demonstrate",
+      "incorporate",
+      "establish",
+      "maintain",
+      "ensure",
+      "provide",
+      "enhance",
+      "optimize",
+      "streamline",
+      "improve",
+      "refine",
+      "comprehensive",
+      "substantial"
     ]
 
     simple_change_indicators = ["fix", "add", "remove", "update", "change"]
@@ -303,7 +332,11 @@ defmodule GitColors.CommitAnalyzer do
   end
 
   defp add_template_structure_score(score, message_lower) do
-    if String.contains?(message_lower, ["add support for", "implement support for", "update support for"]) do
+    if String.contains?(message_lower, [
+         "add support for",
+         "implement support for",
+         "update support for"
+       ]) do
       score + 2
     else
       score

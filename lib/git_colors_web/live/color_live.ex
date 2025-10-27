@@ -187,9 +187,20 @@ defmodule GitColorsWeb.ColorLive do
                       <span class="text-gray-400">Brightness:</span>
                       <span class="text-gray-200">{get_brightness(@selected_color)}%</span>
                     </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-400">Analysis:</span>
+                      <a
+                        href={"https://www.colorhexa.com/#{@selected_color}"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-400 hover:text-blue-300 underline transition-colors"
+                      >
+                        View on ColorHexa ↗
+                      </a>
+                    </div>
                   </div>
 
-                  <!-- Commit Information -->
+    <!-- Commit Information -->
                   <%= if @commit_colors != [] do %>
                     <% matching_commits = get_commits_for_color(@commit_colors, @selected_color) %>
                     <%= if length(matching_commits) > 0 do %>
@@ -201,8 +212,10 @@ defmodule GitColorsWeb.ColorLive do
                           <%= for commit <- Enum.take(matching_commits, 10) do %>
                             <div class="bg-gray-800 rounded p-2 text-xs">
                               <div class="flex justify-between items-start mb-1">
-                                <span class="font-mono text-gray-300">#{String.slice(commit.hash, 0, 7)}</span>
-                                <span class="text-gray-500">#{format_commit_date(commit.date)}</span>
+                                <span class="font-mono text-gray-300">
+                                  #{String.slice(commit.hash, 0, 7)}
+                                </span>
+                                <span class="text-gray-500">{format_commit_date(commit.date)}</span>
                               </div>
                               <p class="text-gray-200 line-clamp-2">{commit.message}</p>
                               <div class="flex justify-between items-center mt-1">
@@ -1061,8 +1074,8 @@ defmodule GitColorsWeb.ColorLive do
         # Return some mock commit hashes with messages and dates for testing
         mock_commits = """
         abc123def456|Add new feature for user authentication|2025-10-24 10:30:00 +0000
-        789ghi012jkl|Fix bug in password validation|2025-10-23 14:15:30 +0000
-        345mno678pqr|Update documentation for API endpoints|2025-10-22 09:45:15 +0000
+        789abc012def|Fix bug in password validation|2025-10-23 14:15:30 +0000
+        345def678abc|Update documentation for API endpoints|2025-10-22 09:45:15 +0000
         """
 
         {mock_commits, 0}
@@ -1249,11 +1262,13 @@ defmodule GitColorsWeb.ColorLive do
             "#{month}/#{day}/#{year}"
 
           _ ->
-            date_part  # Return original date part if parsing fails
+            # Return original date part if parsing fails
+            date_part
         end
 
       _ ->
-        String.slice(date_string, 0..10)  # Just show first part if parsing fails
+        # Just show first part if parsing fails
+        String.slice(date_string, 0..10)
     end
   end
 
@@ -1286,7 +1301,8 @@ defmodule GitColorsWeb.ColorLive do
   def get_commits_for_color(commits, color) do
     commits
     |> Enum.filter(&(&1.color == color))
-    |> Enum.sort_by(& &1.date, :desc)  # Most recent first - ISO dates sort correctly as strings
+    # Most recent first - ISO dates sort correctly as strings
+    |> Enum.sort_by(& &1.date, :desc)
   end
 
   defp generate_colorful_letters(text) do

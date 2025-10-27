@@ -356,6 +356,37 @@ defmodule GitColorsWeb.ColorLiveTest do
       assert html =~ "Brightness:"
       # RGB for abc123
       assert html =~ "171, 193, 35"
+      # Check for ColorHexa link
+      assert html =~ "View on ColorHexa"
+      assert html =~ "https://www.colorhexa.com/abc123"
+    end
+
+    test "colorhexa link has proper attributes", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      # Load repo and select a color
+      view
+      |> form("#directory-form", %{
+        "directory_path" => "/test/repo/path",
+        "commit_count" => "100"
+      })
+      |> render_submit()
+
+      :timer.sleep(100)
+
+      view
+      |> element("div[phx-value-color='abc123']")
+      |> render_click()
+
+      # Check that the ColorHexa link has proper security attributes
+      assert has_element?(
+               view,
+               "a[href='https://www.colorhexa.com/abc123'][target='_blank'][rel='noopener noreferrer']"
+             )
+
+      html = render(view)
+      assert html =~ "target=\"_blank\""
+      assert html =~ "rel=\"noopener noreferrer\""
     end
 
     test "handles form validation with empty directory", %{conn: conn} do
