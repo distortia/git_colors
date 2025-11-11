@@ -134,6 +134,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "fix",
+          author: "Alice Johnson",
           analysis: %{
             type: "fix",
             sentiment: "negative",
@@ -147,6 +148,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "def456",
           color: "00ff00",
           message: "add new feature",
+          author: "Bob Smith",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -160,6 +162,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "ghi789",
           color: "0000ff",
           message: "refactor authentication system with new OAuth implementation",
+          author: "Charlie Davis",
           analysis: %{
             type: "refactor",
             sentiment: "neutral",
@@ -186,6 +189,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "fix typo",
+          author: "Alice Johnson",
           analysis: %{
             type: "fix",
             sentiment: "negative",
@@ -199,6 +203,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "def456",
           color: "00ff00",
           message: "fix another typo",
+          author: "Bob Smith",
           analysis: %{
             type: "fix",
             sentiment: "negative",
@@ -212,6 +217,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "ghi789",
           color: "0000ff",
           message: "refactor authentication system",
+          author: "Charlie Davis",
           analysis: %{
             type: "refactor",
             sentiment: "neutral",
@@ -225,6 +231,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "jkl012",
           color: "ffff00",
           message: "add user validation",
+          author: "David Wilson",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -288,6 +295,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "fix typo",
+          author: "Alice Johnson",
           analysis: %{
             type: "fix",
             sentiment: "negative",
@@ -301,6 +309,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "def456",
           color: "00ff00",
           message: "This commit implements comprehensive authentication functionality",
+          author: "Bob Smith",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -314,6 +323,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "ghi789",
           color: "0000ff",
           message: "Add support for enhanced user validation",
+          author: "Charlie Davis",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -327,6 +337,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "jkl012",
           color: "ffff00",
           message: "add user validation",
+          author: "David Wilson",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -359,6 +370,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "feat: add new feature",
+          author: "Alice Johnson",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -372,6 +384,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "def456",
           color: "00ff00",
           message: "revert: undo previous commit",
+          author: "Bob Smith",
           analysis: %{
             type: "revert",
             sentiment: "negative",
@@ -385,6 +398,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "ghi789",
           color: "0000ff",
           message: "fix: bug fix",
+          author: "Charlie Davis",
           analysis: %{
             type: "fix",
             sentiment: "negative",
@@ -398,6 +412,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "jkl012",
           color: "ffff00",
           message: "Revert \"previous feature implementation\"",
+          author: "David Wilson",
           analysis: %{
             type: "revert",
             sentiment: "negative",
@@ -421,6 +436,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
           hash: "abc123",
           color: "ff0000",
           message: "feat: add feature",
+          author: "Alice Johnson",
           analysis: %{
             type: "feat",
             sentiment: "positive",
@@ -441,8 +457,8 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
       # Test ISO 8601 format (what git %ci produces)
       iso_date = "2025-10-24 10:30:00 +0000"
 
-      # Test that we can parse a commit with date correctly
-      mock_line = "abc123|test commit|#{iso_date}"
+      # Test that we can parse a commit with author and date correctly
+      mock_line = "abc123|test commit|Alice Johnson|#{iso_date}"
       assert String.contains?(mock_line, iso_date)
 
       # Test date format specifically by making a commit entry
@@ -450,6 +466,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         hash: "abc123",
         color: "abc123",
         message: "test commit",
+        author: "Alice Johnson",
         date: iso_date,
         analysis: %{}
       }

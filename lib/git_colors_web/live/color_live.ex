@@ -410,6 +410,63 @@ defmodule GitColorsWeb.ColorLive do
               </div>
             <% end %>
 
+    <!-- Top Contributors -->
+            <%= if @commit_colors != [] && length(@commit_colors) > 1 do %>
+              <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-100 mb-3">Top Contributors</h3>
+                <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
+                  <% analysis_stats = get_commit_analysis_stats(@commit_colors) %>
+                  <%= if length(analysis_stats.contributor_stats) > 0 do %>
+                    <div class="space-y-3">
+                      <%= for {contributor, index} <- Enum.with_index(analysis_stats.contributor_stats, 1) do %>
+                        <div class="bg-gray-600 bg-opacity-50 rounded p-3 border border-gray-500">
+                          <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center space-x-3">
+                              <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                  {index}
+                                </div>
+                              </div>
+                              <div>
+                                <h4 class="text-gray-100 font-medium text-sm">
+                                  {contributor.name || "Unknown"}
+                                </h4>
+                                <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                  <span>{contributor.commit_count} commits</span>
+                                  <span>{contributor.percentage}% of total</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="text-right">
+                              <div class="text-xs text-gray-300">
+                                <span class="inline-block px-2 py-1 bg-blue-800 text-blue-200 rounded text-xs">
+                                  {contributor.most_common_type}
+                                </span>
+                              </div>
+                              <div class="text-xs text-gray-400 mt-1">
+                                {contributor.avg_word_count} avg words
+                              </div>
+                            </div>
+                          </div>
+                          <!-- Progress bar showing contribution percentage -->
+                          <div class="w-full bg-gray-800 rounded-full h-2">
+                            <div
+                              class="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={"width: #{contributor.percentage}%"}
+                            ></div>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="text-gray-400 text-sm text-center py-2">
+                      No contributor data available
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
     <!-- Commit Timeline -->
             <%= if @commit_colors != [] do %>
               <div class="mb-6">
@@ -823,8 +880,8 @@ defmodule GitColorsWeb.ColorLive do
 
   defp build_git_args(repo_path, count) do
     case count do
-      "all" -> ["-C", repo_path, "log", "--format=%H|%s|%ci"]
-      _ -> ["-C", repo_path, "log", "--format=%H|%s|%ci", "-#{count}"]
+      "all" -> ["-C", repo_path, "log", "--format=%H|%s|%an|%ci"]
+      _ -> ["-C", repo_path, "log", "--format=%H|%s|%an|%ci", "-#{count}"]
     end
   end
 
@@ -836,14 +893,15 @@ defmodule GitColorsWeb.ColorLive do
   end
 
   defp parse_commit_line(line) do
-    case String.split(line, "|", parts: 3) do
-      [hash, message, date] -> create_commit_entry(hash, message, date)
-      [hash, message] -> create_commit_entry(hash, message, "")
-      [hash] -> create_commit_entry(hash, "", "")
+    case String.split(line, "|", parts: 4) do
+      [hash, message, author, date] -> create_commit_entry(hash, message, author, date)
+      [hash, message, author] -> create_commit_entry(hash, message, author, "")
+      [hash, message] -> create_commit_entry(hash, message, "", "")
+      [hash] -> create_commit_entry(hash, "", "", "")
     end
   end
 
-  defp create_commit_entry(hash, message, date) do
+  defp create_commit_entry(hash, message, author, date) do
     color = String.slice(hash, 0, 6)
 
     if String.length(color) == 6 do
@@ -853,6 +911,7 @@ defmodule GitColorsWeb.ColorLive do
         hash: hash,
         color: color,
         message: message,
+        author: author,
         date: date,
         analysis: analysis
       }
@@ -1071,11 +1130,11 @@ defmodule GitColorsWeb.ColorLive do
         {"fatal: not a git repository", 128}
 
       _ ->
-        # Return some mock commit hashes with messages and dates for testing
+        # Return some mock commit hashes with messages, authors, and dates for testing
         mock_commits = """
-        abc123def456|Add new feature for user authentication|2025-10-24 10:30:00 +0000
-        789abc012def|Fix bug in password validation|2025-10-23 14:15:30 +0000
-        345def678abc|Update documentation for API endpoints|2025-10-22 09:45:15 +0000
+        abc123def456|Add new feature for user authentication|Alice Johnson|2025-10-24 10:30:00 +0000
+        789abc012def|Fix bug in password validation|Bob Smith|2025-10-23 14:15:30 +0000
+        345def678abc|Update documentation for API endpoints|Charlie Davis|2025-10-22 09:45:15 +0000
         """
 
         {mock_commits, 0}
@@ -1170,83 +1229,102 @@ defmodule GitColorsWeb.ColorLive do
   def get_commit_analysis_stats(commits) do
     analyses = Enum.map(commits, & &1.analysis)
 
-    type_counts =
-      analyses
-      |> Enum.group_by(& &1.type)
-      |> Enum.map(fn {type, list} -> {type, length(list)} end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
+    %{
+      type_distribution: calculate_distribution(analyses, & &1.type),
+      sentiment_distribution: calculate_distribution(analyses, & &1.sentiment),
+      complexity_distribution: calculate_distribution(analyses, & &1.complexity),
+      breaking_changes: Enum.count(analyses, & &1.has_breaking_change),
+      total_commits: length(commits),
+      revert_stats: calculate_revert_stats(analyses, commits),
+      word_count_stats: calculate_word_count_stats(analyses),
+      ai_generation_stats: calculate_ai_stats(analyses, commits),
+      contributor_stats: calculate_contributor_stats(commits)
+    }
+  end
 
-    sentiment_counts =
-      analyses
-      |> Enum.group_by(& &1.sentiment)
-      |> Enum.map(fn {sentiment, list} -> {sentiment, length(list)} end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
+  defp calculate_distribution(analyses, selector_fn) do
+    analyses
+    |> Enum.group_by(selector_fn)
+    |> Enum.map(fn {key, list} -> {key, length(list)} end)
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+  end
 
-    complexity_counts =
-      analyses
-      |> Enum.group_by(& &1.complexity)
-      |> Enum.map(fn {complexity, list} -> {complexity, length(list)} end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-
-    breaking_changes = Enum.count(analyses, & &1.has_breaking_change)
-
-    # Calculate word count statistics
+  defp calculate_word_count_stats(analyses) do
     word_counts = Enum.map(analyses, & &1.word_count)
 
-    avg_word_count =
-      if length(word_counts) > 0,
-        do: Float.round(Enum.sum(word_counts) / length(word_counts), 1),
-        else: 0
+    %{
+      average: safe_average(word_counts),
+      max: safe_max(word_counts),
+      min: safe_min(word_counts),
+      total_words: Enum.sum(word_counts)
+    }
+  end
 
-    max_word_count = if length(word_counts) > 0, do: Enum.max(word_counts), else: 0
-    min_word_count = if length(word_counts) > 0, do: Enum.min(word_counts), else: 0
-
-    # Calculate AI generation statistics
-    ai_generated_counts =
-      analyses
-      |> Enum.group_by(& &1.is_ai_generated)
-      |> Enum.map(fn {ai_level, list} -> {ai_level, length(list)} end)
-      |> Enum.sort_by(&elem(&1, 1), :desc)
-
-    # Count likely AI-generated commits (likely + highly_likely)
-    likely_ai_count =
-      analyses
-      |> Enum.count(&(&1.is_ai_generated in ["likely", "highly_likely"]))
-
-    # Calculate revert statistics
-    revert_count = Enum.count(analyses, &(&1.type == "revert"))
-
-    revert_percentage =
-      if length(commits) > 0,
-        do: Float.round(revert_count / length(commits) * 100, 1),
-        else: 0
+  defp calculate_ai_stats(analyses, commits) do
+    ai_generated_counts = calculate_distribution(analyses, & &1.is_ai_generated)
+    likely_ai_count = Enum.count(analyses, &(&1.is_ai_generated in ["likely", "highly_likely"]))
 
     %{
-      type_distribution: type_counts,
-      sentiment_distribution: sentiment_counts,
-      complexity_distribution: complexity_counts,
-      breaking_changes: breaking_changes,
-      total_commits: length(commits),
-      revert_stats: %{
-        count: revert_count,
-        percentage: revert_percentage
-      },
-      word_count_stats: %{
-        average: avg_word_count,
-        max: max_word_count,
-        min: min_word_count,
-        total_words: Enum.sum(word_counts)
-      },
-      ai_generation_stats: %{
-        distribution: ai_generated_counts,
-        likely_ai_count: likely_ai_count,
-        likely_ai_percentage:
-          if(length(commits) > 0,
-            do: Float.round(likely_ai_count / length(commits) * 100, 1),
-            else: 0
-          )
-      }
+      distribution: ai_generated_counts,
+      likely_ai_count: likely_ai_count,
+      likely_ai_percentage: safe_percentage(likely_ai_count, length(commits))
     }
+  end
+
+  defp calculate_revert_stats(analyses, commits) do
+    revert_count = Enum.count(analyses, &(&1.type == "revert"))
+
+    %{
+      count: revert_count,
+      percentage: safe_percentage(revert_count, length(commits))
+    }
+  end
+
+  defp calculate_contributor_stats(commits) do
+    commits
+    |> Enum.group_by(&normalize_author/1)
+    |> Enum.map(&build_contributor_stat(&1, length(commits)))
+    |> Enum.sort_by(& &1.commit_count, :desc)
+    |> Enum.take(5)
+  end
+
+  defp normalize_author(%{author: nil}), do: "Unknown Author"
+  defp normalize_author(%{author: ""}), do: "Unknown Author"
+  defp normalize_author(%{author: author}), do: author
+
+  defp build_contributor_stat({author, author_commits}, total_commits) do
+    author_analyses = Enum.map(author_commits, & &1.analysis)
+
+    %{
+      name: author,
+      commit_count: length(author_commits),
+      percentage: safe_percentage(length(author_commits), total_commits),
+      most_common_type: get_most_common_type(author_analyses),
+      avg_word_count: safe_average(Enum.map(author_analyses, & &1.word_count))
+    }
+  end
+
+  defp safe_average([]), do: 0
+  defp safe_average(list), do: Float.round(Enum.sum(list) / length(list), 1)
+
+  defp safe_max([]), do: 0
+  defp safe_max(list), do: Enum.max(list)
+
+  defp safe_min([]), do: 0
+  defp safe_min(list), do: Enum.min(list)
+
+  defp safe_percentage(_numerator, 0), do: 0
+  defp safe_percentage(numerator, denominator), do: Float.round(numerator / denominator * 100, 1)
+
+  defp get_most_common_type(analyses) do
+    if length(analyses) > 0 do
+      analyses
+      |> Enum.group_by(& &1.type)
+      |> Enum.max_by(fn {_type, list} -> length(list) end)
+      |> elem(0)
+    else
+      "unknown"
+    end
   end
 
   defp format_commit_date(""), do: "Unknown date"
