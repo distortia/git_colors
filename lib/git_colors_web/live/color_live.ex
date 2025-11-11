@@ -425,9 +425,19 @@ defmodule GitColorsWeb.ColorLive do
                           <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center space-x-3">
                               <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                  {index}
-                                </div>
+                                <%= if index <= 3 do %>
+                                  <div class="w-8 h-8 flex items-center justify-center">
+                                    <.icon name="hero-trophy" class={"w-7 h-7 #{case index do
+                                      1 -> "text-yellow-400"  # Gold
+                                      2 -> "text-gray-300"    # Silver
+                                      3 -> "text-orange-600"  # Bronze
+                                    end}"} />
+                                  </div>
+                                <% else %>
+                                  <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-gray-300 font-bold text-sm">
+                                    {index}
+                                  </div>
+                                <% end %>
                               </div>
                               <div>
                                 <h4 class="text-gray-100 font-medium text-sm">
