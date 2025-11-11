@@ -2,6 +2,7 @@ defmodule GitColorsWeb.ColorLiveTest do
   use GitColorsWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+  alias GitColors.Analytics
 
   describe "ColorLive" do
     test "disconnected and connected render", %{conn: conn} do
@@ -473,14 +474,14 @@ defmodule GitColorsWeb.ColorLiveTest do
 
     test "get_most_common_color finds the most frequent color" do
       colors = ["ff0000", "00ff00", "ff0000", "0000ff", "ff0000"]
-      assert "ff0000" == ColorLive.get_most_common_color(colors)
+      assert "ff0000" == Analytics.get_most_common_color(colors)
 
       # Test with single color
-      assert "abc123" == ColorLive.get_most_common_color(["abc123"])
+      assert "abc123" == Analytics.get_most_common_color(["abc123"])
 
       # Test with equal frequencies - should return first one
       colors_equal = ["ff0000", "00ff00", "0000ff"]
-      result = ColorLive.get_most_common_color(colors_equal)
+      result = Analytics.get_most_common_color(colors_equal)
       assert result in colors_equal
     end
 
@@ -488,7 +489,7 @@ defmodule GitColorsWeb.ColorLiveTest do
       # The function will crash on empty list due to Enum.max_by
       # This tests the error behavior
       assert_raise Enum.EmptyError, fn ->
-        ColorLive.get_most_common_color([])
+        Analytics.get_most_common_color([])
       end
     end
   end

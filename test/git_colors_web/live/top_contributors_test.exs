@@ -1,33 +1,84 @@
 defmodule GitColorsWeb.TopContributorsTest do
   use ExUnit.Case, async: true
+  alias GitColors.Analytics
 
   describe "top contributors analysis" do
     test "calculates top contributors correctly" do
       # Create mock commits with different authors
       commits = [
         %{
-          hash: "abc123", color: "ff0000", message: "feat: add feature", author: "Alice Johnson",
-          analysis: %{type: "feat", sentiment: "positive", complexity: "medium", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "abc123",
+          color: "ff0000",
+          message: "feat: add feature",
+          author: "Alice Johnson",
+          analysis: %{
+            type: "feat",
+            sentiment: "positive",
+            complexity: "medium",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         },
         %{
-          hash: "def456", color: "00ff00", message: "fix: bug fix", author: "Alice Johnson",
-          analysis: %{type: "fix", sentiment: "negative", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "def456",
+          color: "00ff00",
+          message: "fix: bug fix",
+          author: "Alice Johnson",
+          analysis: %{
+            type: "fix",
+            sentiment: "negative",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         },
         %{
-          hash: "ghi789", color: "0000ff", message: "docs: update docs", author: "Bob Smith",
-          analysis: %{type: "docs", sentiment: "neutral", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "ghi789",
+          color: "0000ff",
+          message: "docs: update docs",
+          author: "Bob Smith",
+          analysis: %{
+            type: "docs",
+            sentiment: "neutral",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         },
         %{
-          hash: "jkl012", color: "ffff00", message: "feat: new feature", author: "Alice Johnson",
-          analysis: %{type: "feat", sentiment: "positive", complexity: "high", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "jkl012",
+          color: "ffff00",
+          message: "feat: new feature",
+          author: "Alice Johnson",
+          analysis: %{
+            type: "feat",
+            sentiment: "positive",
+            complexity: "high",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         },
         %{
-          hash: "mno345", color: "ff00ff", message: "chore: update deps", author: "Charlie Davis",
-          analysis: %{type: "chore", sentiment: "neutral", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "mno345",
+          color: "ff00ff",
+          message: "chore: update deps",
+          author: "Charlie Davis",
+          analysis: %{
+            type: "chore",
+            sentiment: "neutral",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Check contributor statistics
       assert length(stats.contributor_stats) == 3
@@ -56,7 +107,7 @@ defmodule GitColorsWeb.TopContributorsTest do
     end
 
     test "handles empty commits gracefully" do
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats([])
+      stats = Analytics.get_commit_analysis_stats([])
 
       assert stats.contributor_stats == []
     end
@@ -66,12 +117,22 @@ defmodule GitColorsWeb.TopContributorsTest do
       commits =
         for i <- 1..7 do
           %{
-            hash: "abc#{i}23", color: "ff000#{i}", message: "feat: feature #{i}", author: "Author #{i}",
-            analysis: %{type: "feat", sentiment: "positive", complexity: "low", word_count: 2, has_breaking_change: false, is_ai_generated: "unlikely"}
+            hash: "abc#{i}23",
+            color: "ff000#{i}",
+            message: "feat: feature #{i}",
+            author: "Author #{i}",
+            analysis: %{
+              type: "feat",
+              sentiment: "positive",
+              complexity: "low",
+              word_count: 2,
+              has_breaking_change: false,
+              is_ai_generated: "unlikely"
+            }
           }
         end
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Should only return top 5
       assert length(stats.contributor_stats) == 5
@@ -80,16 +141,36 @@ defmodule GitColorsWeb.TopContributorsTest do
     test "handles missing author gracefully" do
       commits = [
         %{
-          hash: "abc123", color: "ff0000", message: "feat: add feature", author: "",
-          analysis: %{type: "feat", sentiment: "positive", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "abc123",
+          color: "ff0000",
+          message: "feat: add feature",
+          author: "",
+          analysis: %{
+            type: "feat",
+            sentiment: "positive",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         },
         %{
-          hash: "def456", color: "00ff00", message: "fix: bug fix", author: nil,
-          analysis: %{type: "fix", sentiment: "negative", complexity: "low", word_count: 3, has_breaking_change: false, is_ai_generated: "unlikely"}
+          hash: "def456",
+          color: "00ff00",
+          message: "fix: bug fix",
+          author: nil,
+          analysis: %{
+            type: "fix",
+            sentiment: "negative",
+            complexity: "low",
+            word_count: 3,
+            has_breaking_change: false,
+            is_ai_generated: "unlikely"
+          }
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Should group empty/nil authors together as "Unknown Author"
       assert length(stats.contributor_stats) == 1

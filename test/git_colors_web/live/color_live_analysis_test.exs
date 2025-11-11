@@ -1,5 +1,6 @@
 defmodule GitColorsWeb.ColorLiveAnalysisTest do
   use ExUnit.Case, async: true
+  alias GitColors.Analytics
 
   describe "basic commit analysis" do
     test "classifies different commit types correctly" do
@@ -174,7 +175,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       assert stats.word_count_stats.average == 4.0
       assert stats.word_count_stats.min == 1
@@ -243,7 +244,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Check complexity distribution
       complexity_map = Enum.into(stats.complexity_distribution, %{})
@@ -349,7 +350,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Check AI generation statistics
       # "likely" + "highly_likely"
@@ -424,7 +425,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         }
       ]
 
-      stats = GitColorsWeb.ColorLive.get_commit_analysis_stats(commits)
+      stats = Analytics.get_commit_analysis_stats(commits)
 
       # Check revert statistics
       assert stats.revert_stats.count == 2
@@ -448,7 +449,7 @@ defmodule GitColorsWeb.ColorLiveAnalysisTest do
         }
       ]
 
-      stats_no_reverts = GitColorsWeb.ColorLive.get_commit_analysis_stats(no_revert_commits)
+      stats_no_reverts = Analytics.get_commit_analysis_stats(no_revert_commits)
       assert stats_no_reverts.revert_stats.count == 0
       assert stats_no_reverts.revert_stats.percentage == 0.0
     end

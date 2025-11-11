@@ -1,6 +1,7 @@
 defmodule GitColorsWeb.ColorLive do
   use GitColorsWeb, :live_view
   require Logger
+  alias GitColors.Analytics
 
   @cache_table :git_colors_cache
   @cache_ttl_seconds 30
@@ -144,7 +145,7 @@ defmodule GitColorsWeb.ColorLive do
                     <div class="bg-purple-900 border border-purple-700 rounded-md p-3">
                       <p class="text-purple-200 text-sm">
                         <span class="font-medium">Unique Colors:</span> {@commit_colors
-                        |> extract_colors()
+                        |> Analytics.extract_colors()
                         |> Enum.uniq()
                         |> length()}
                       </p>
@@ -245,17 +246,17 @@ defmodule GitColorsWeb.ColorLive do
                 <h3 class="text-lg font-semibold text-gray-100 mb-3">Color Statistics</h3>
                 <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
                   <div class="space-y-2 text-sm">
-                    <%= if Float.round(length(Enum.uniq(extract_colors(@commit_colors))) / length(@commit_colors) * 100, 3) != 100.0 do %>
+                    <%= if Float.round(length(Enum.uniq(Analytics.extract_colors(@commit_colors))) / length(@commit_colors) * 100, 3) != 100.0 do %>
                       <div class="flex justify-between">
                         <span class="text-gray-400">Most Common:</span>
                         <div class="flex items-center space-x-2">
                           <div
                             class="w-4 h-4 rounded border border-gray-500"
-                            style={"background-color: ##{get_most_common_color(@commit_colors)}"}
+                            style={"background-color: ##{Analytics.get_most_common_color(@commit_colors)}"}
                           >
                           </div>
                           <span class="font-mono text-gray-200">
-                            #{get_most_common_color(@commit_colors)}
+                            #{Analytics.get_most_common_color(@commit_colors)}
                           </span>
                         </div>
                       </div>
@@ -264,7 +265,8 @@ defmodule GitColorsWeb.ColorLive do
                       <span class="text-gray-400">Diversity:</span>
                       <span class="text-gray-200">
                         {Float.round(
-                          length(Enum.uniq(extract_colors(@commit_colors))) / length(@commit_colors) *
+                          length(Enum.uniq(Analytics.extract_colors(@commit_colors))) /
+                            length(@commit_colors) *
                             100,
                           3
                         )}%
@@ -280,7 +282,7 @@ defmodule GitColorsWeb.ColorLive do
               <div class="mb-6">
                 <h3 class="text-lg font-semibold text-gray-100 mb-3">Commit Analysis</h3>
                 <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
-                  <% analysis_stats = get_commit_analysis_stats(@commit_colors)
+                  <% analysis_stats = Analytics.get_commit_analysis_stats(@commit_colors)
                   [top_type | _] = analysis_stats.type_distribution
                   [top_sentiment | _] = analysis_stats.sentiment_distribution
                   [top_complexity | _] = analysis_stats.complexity_distribution %>
@@ -415,7 +417,7 @@ defmodule GitColorsWeb.ColorLive do
               <div class="mb-6">
                 <h3 class="text-lg font-semibold text-gray-100 mb-3">Top Contributors</h3>
                 <div class="bg-gray-700 border border-gray-600 rounded-md p-4">
-                  <% analysis_stats = get_commit_analysis_stats(@commit_colors) %>
+                  <% analysis_stats = Analytics.get_commit_analysis_stats(@commit_colors) %>
                   <%= if length(analysis_stats.contributor_stats) > 0 do %>
                     <div class="space-y-3">
                       <%= for {contributor, index} <- Enum.with_index(analysis_stats.contributor_stats, 1) do %>
@@ -453,7 +455,8 @@ defmodule GitColorsWeb.ColorLive do
                             <div
                               class="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
                               style={"width: #{contributor.percentage}%"}
-                            ></div>
+                            >
+                            </div>
                           </div>
                         </div>
                       <% end %>
@@ -1205,126 +1208,6 @@ defmodule GitColorsWeb.ColorLive do
     # Calculate perceived brightness using the luminance formula
     brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255 * 100
     Float.round(brightness, 1)
-  end
-
-  def get_most_common_color(commits) when is_list(commits) do
-    commits
-    |> Enum.map(fn
-      %{color: color} -> color
-      color when is_binary(color) -> color
-    end)
-    |> Enum.frequencies()
-    |> Enum.max_by(fn {_color, count} -> count end)
-    |> elem(0)
-  end
-
-  # Helper functions for working with commit data
-  def extract_colors(commits) do
-    Enum.map(commits, fn
-      %{color: color} -> color
-      color when is_binary(color) -> color
-    end)
-  end
-
-  def get_commit_analysis_stats(commits) do
-    analyses = Enum.map(commits, & &1.analysis)
-
-    %{
-      type_distribution: calculate_distribution(analyses, & &1.type),
-      sentiment_distribution: calculate_distribution(analyses, & &1.sentiment),
-      complexity_distribution: calculate_distribution(analyses, & &1.complexity),
-      breaking_changes: Enum.count(analyses, & &1.has_breaking_change),
-      total_commits: length(commits),
-      revert_stats: calculate_revert_stats(analyses, commits),
-      word_count_stats: calculate_word_count_stats(analyses),
-      ai_generation_stats: calculate_ai_stats(analyses, commits),
-      contributor_stats: calculate_contributor_stats(commits)
-    }
-  end
-
-  defp calculate_distribution(analyses, selector_fn) do
-    analyses
-    |> Enum.group_by(selector_fn)
-    |> Enum.map(fn {key, list} -> {key, length(list)} end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-  end
-
-  defp calculate_word_count_stats(analyses) do
-    word_counts = Enum.map(analyses, & &1.word_count)
-
-    %{
-      average: safe_average(word_counts),
-      max: safe_max(word_counts),
-      min: safe_min(word_counts),
-      total_words: Enum.sum(word_counts)
-    }
-  end
-
-  defp calculate_ai_stats(analyses, commits) do
-    ai_generated_counts = calculate_distribution(analyses, & &1.is_ai_generated)
-    likely_ai_count = Enum.count(analyses, &(&1.is_ai_generated in ["likely", "highly_likely"]))
-
-    %{
-      distribution: ai_generated_counts,
-      likely_ai_count: likely_ai_count,
-      likely_ai_percentage: safe_percentage(likely_ai_count, length(commits))
-    }
-  end
-
-  defp calculate_revert_stats(analyses, commits) do
-    revert_count = Enum.count(analyses, &(&1.type == "revert"))
-
-    %{
-      count: revert_count,
-      percentage: safe_percentage(revert_count, length(commits))
-    }
-  end
-
-  defp calculate_contributor_stats(commits) do
-    commits
-    |> Enum.group_by(&normalize_author/1)
-    |> Enum.map(&build_contributor_stat(&1, length(commits)))
-    |> Enum.sort_by(& &1.commit_count, :desc)
-    |> Enum.take(5)
-  end
-
-  defp normalize_author(%{author: nil}), do: "Unknown Author"
-  defp normalize_author(%{author: ""}), do: "Unknown Author"
-  defp normalize_author(%{author: author}), do: author
-
-  defp build_contributor_stat({author, author_commits}, total_commits) do
-    author_analyses = Enum.map(author_commits, & &1.analysis)
-
-    %{
-      name: author,
-      commit_count: length(author_commits),
-      percentage: safe_percentage(length(author_commits), total_commits),
-      most_common_type: get_most_common_type(author_analyses),
-      avg_word_count: safe_average(Enum.map(author_analyses, & &1.word_count))
-    }
-  end
-
-  defp safe_average([]), do: 0
-  defp safe_average(list), do: Float.round(Enum.sum(list) / length(list), 1)
-
-  defp safe_max([]), do: 0
-  defp safe_max(list), do: Enum.max(list)
-
-  defp safe_min([]), do: 0
-  defp safe_min(list), do: Enum.min(list)
-
-  defp safe_percentage(_numerator, 0), do: 0
-  defp safe_percentage(numerator, denominator), do: Float.round(numerator / denominator * 100, 1)
-
-  defp get_most_common_type(analyses) do
-    if length(analyses) > 0 do
-      analyses
-      |> Enum.group_by(& &1.type)
-      |> Enum.max_by(fn {_type, list} -> length(list) end)
-      |> elem(0)
-    else
-      "unknown"
-    end
   end
 
   defp format_commit_date(""), do: "Unknown date"
